@@ -1,6 +1,6 @@
 # Blue Clues v1
 
-**Blue Clues** is a Bluetooth reconnaissance tool for the WiFi Pineapple Pager. It scans for visible devices, identifies their "Friendly Names," and automatically catalogs them into a timestamped log.
+**Blue Clues** is a Bluetooth reconnaissance tool for the WiFi Pineapple Pager. It scans for visible devices, identifies their "Friendly Names", and automatically catalogs them into a timestamped log.
 
 ---
 
@@ -51,3 +51,4 @@ Scanning ...
 00:11:22:33:44:55       Mike's iPhone
 
 AA:BB:CC:DD:EE:FF       Tesla Model 3
+
