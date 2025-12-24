@@ -46,12 +46,27 @@ esac
 LOG "Updating package index..."
 
 if ! opkg update >/dev/null 2>&1; then
-    LOG "ERROR: Failed to update package index"
-    ERROR_DIALOG "Failed to update package index."
-    exit 1
+    LOG "WARNING: Package index update had errors"
+    
+    resp=$(CONFIRMATION_DIALOG "Package index update had errors. Continue anyway?")
+    case $? in
+        $DUCKYSCRIPT_REJECTED|$DUCKYSCRIPT_ERROR)
+            LOG "Dialog rejected"
+            exit 1
+            ;;
+    esac
+    
+    case "$resp" in
+        $DUCKYSCRIPT_USER_DENIED)
+            LOG "User cancelled"
+            exit 0
+            ;;
+    esac
+    
+    LOG "Continuing despite update errors..."
+else
+    LOG "Package index updated"
 fi
-
-LOG "Package index updated"
 
 LOG "Installing packages..."
 installed_count=0
