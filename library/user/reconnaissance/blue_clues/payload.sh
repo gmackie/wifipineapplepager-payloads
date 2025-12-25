@@ -5,7 +5,7 @@
 # --- 1. LOG SETUP ---
 CURRENT_DIR=$(pwd)
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-LOG_FILE="${CURRENT_DIR}/blueclues_${TIMESTAMP}.txt"
+LOG_FILE="/root/loot/blue_clues/blueclues_${TIMESTAMP}.txt"
 touch "$LOG_FILE"
 
 # --- 2. HARDWARE CONTROL ---
