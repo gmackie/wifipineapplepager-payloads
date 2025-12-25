@@ -136,8 +136,9 @@ else
 fi
 
 if [ "$MODE_ID" -eq 1 ]; then
-    # === PARSED MODE (DECONSTRUCTED) ===
-    # Strategy: Color headers on separate lines, batch white info text.
+    # === PARSED MODE (PURE DATA) ===
+    # Colors: Time(Y), Addr(B), User(G), Pass(R), Info(W)
+    # No status headers injected.
     
     eval "$CMD" | awk '
     BEGIN { IGNORECASE = 1 }
@@ -153,21 +154,11 @@ if [ "$MODE_ID" -eq 1 ]; then
         if (RSTART > 0) {
             ts = substr(line, RSTART, RLENGTH);
             print "LOG yellow \"TIME: " ts "\"";
-            
-            # FIX: Use sub() instead of gsub()
-            # gsub removes ALL matches, potentially eating MAC addresses like 00:00:06...
-            # sub removes only the FIRST match (the actual timestamp)
+            # Safe MAC removal fix (sub not gsub)
             sub(/[0-9]{2}:[0-9]{2}:[0-9]{2}/, "", line);
         }
 
-        # 2. STATUS (Green/Red)
-        if ($0 ~ /error|down|closed|fail|refused|denied|critical/) {
-            print "LOG red \"STATUS: FAILURE\"";
-        } else if ($0 ~ /open|up|success|connected|established|200 ok/) {
-            print "LOG green \"STATUS: SUCCESS\"";
-        }
-
-        # 3. ADDRESS (Blue)
+        # 2. ADDRESS (Blue)
         # IP
         while (match(line, /([0-9]{1,3}\.){3}[0-9]{1,3}/)) {
              ip = substr(line, RSTART, RLENGTH);
@@ -181,16 +172,48 @@ if [ "$MODE_ID" -eq 1 ]; then
              line = substr(line, 1, RSTART-1) substr(line, RSTART+RLENGTH);
         }
 
+        # 3. CREDENTIALS (Green/Red)
+        spacer_printed = 0;
+
+        # Username (Green)
+        match(line, /(user(name)?|login)[:=][ \t]*[^ \t]+/);
+        if (RSTART > 0) {
+            full_match = substr(line, RSTART, RLENGTH);
+            
+            if (spacer_printed == 0) {
+                print "LOG \" \""; # Visual Spacer
+                spacer_printed = 1;
+            }
+
+            print "LOG green \"" full_match "\"";
+            line = substr(line, 1, RSTART-1) substr(line, RSTART+RLENGTH);
+        }
+
+        # Password (Red)
+        match(line, /(pass(word)?|pwd|key)[:=][ \t]*[^ \t]+/);
+        if (RSTART > 0) {
+            full_match = substr(line, RSTART, RLENGTH);
+            
+            if (spacer_printed == 0) {
+                print "LOG \" \""; # Visual Spacer
+                spacer_printed = 1;
+            }
+
+            print "LOG red \"" full_match "\"";
+            line = substr(line, 1, RSTART-1) substr(line, RSTART+RLENGTH);
+        }
+
         # 4. INFO & SEPARATOR (White Batch)
         # Clean whitespace
         gsub(/^[ \t]+|[ \t]+$/, "", line);
         
         info_block = "";
         if (length(line) > 1) {
+            # Just print the remaining text as INFO
             info_block = "INFO: " line;
         }
         
-        # Combine info and separator to save 1 call
+        # Combine info and separator
         if (info_block != "") {
             print "LOG \" " info_block "\n---\"";
         } else {
@@ -204,12 +227,10 @@ if [ "$MODE_ID" -eq 1 ]; then
 
 elif [ "$MODE_ID" -eq 2 ]; then
     # === RAW MODE (OPTIMIZED BATCH) ===
-    # Strategy: Group 25 lines into one LOG command.
     
     eval "$CMD" | awk '
     BEGIN { buffer = ""; count = 0; }
     {
-        # Escape quotes
         gsub(/"/, "\\\"", $0);
         
         if (buffer != "") {
@@ -219,7 +240,6 @@ elif [ "$MODE_ID" -eq 2 ]; then
         }
         count++;
         
-        # Batch Size: 25 Lines per print
         if (count >= 25) {
             print "LOG \"" buffer "\"";
             buffer = "";
