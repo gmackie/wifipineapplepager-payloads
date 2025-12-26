@@ -56,7 +56,7 @@ The tool compiles the render script. Press **OK** to generate the view.
 The log is displayed on screen.
 * **Yellow:** Timestamp
 * **Blue:** IP or MAC Address
-* **Green/Red:** Status (Success/Failure)
+* **Green/Red:** Username/Password
 * **White:** General Info
 
 ![Final View](screens/Capture_08.png)
@@ -74,8 +74,6 @@ as: nmap -Pn -sS -F -oA
 /root/loot/nmapTarget/2025-12-23T11:21:37-05:00
 /24
 ---
-STATUS: SUCCESS
 ADDR: 192.168.50.1
 INFO: Host: () Status: Up
 ---
-STATUS: FAILURE
