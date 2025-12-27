@@ -1,11 +1,15 @@
 #!/bin/bash
 # Title: Update Payloads
-# Description: Syncs payloads from github.
+# Description: Downloads and syncs all payloads from github.
 # Author: cococode
 # Version: 1.0
 
 # === CONFIGURATION ===
-ZIP_URL="https://github.com/hak5/wifipineapplepager-payloads/archive/refs/heads/master.zip"
+GH_ORG="hak5"
+GH_REPO="wifipineapplepager-payloads"
+GH_BRANCH="master"
+
+ZIP_URL="https://github.com/$GH_ORG/$GH_REPO/archive/refs/heads/$GH_BRANCH.zip"
 TARGET_DIR="/mmc/root/payloads"
 TEMP_DIR="/tmp/pager_update"
 
@@ -47,17 +51,17 @@ download_payloads() {
     rm -rf "$TEMP_DIR"
     mkdir -p "$TEMP_DIR"
 
-    if ! wget -q --no-check-certificate "$ZIP_URL" -O "$TEMP_DIR/master.zip"; then
+    if ! wget -q --no-check-certificate "$ZIP_URL" -O "$TEMP_DIR/$GH_BRANCH.zip"; then
         LED FAIL
         LOG "Download Failed"
         exit 1
     fi
 
-    unzip -q "$TEMP_DIR/master.zip" -d "$TEMP_DIR"
+    unzip -q "$TEMP_DIR/$GH_BRANCH.zip" -d "$TEMP_DIR"
 }
 
 process_payloads() {
-    local src_lib="$TEMP_DIR/wifipineapplepager-payloads-master/library"
+    local src_lib="$TEMP_DIR/$GH_REPO-$GH_BRANCH/library"
 
     if [ ! -d "$src_lib" ]; then
         LED FAIL
