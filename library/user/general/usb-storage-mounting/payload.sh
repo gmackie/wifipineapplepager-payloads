@@ -4,7 +4,7 @@
 # Author: RootJunky
 # Version: 3
 
-MOUNTPOINT="/mnt/usb"
+MOUNTPOINT="/usb"
 
 # Create mount point if it doesn't exist
 mkdir -p "$MOUNTPOINT"
@@ -32,4 +32,5 @@ else
         LOG "USB device mounted at $MOUNTPOINT"
         echo "Mounted $DEVICE at $MOUNTPOINT"
     }
+
 fi
