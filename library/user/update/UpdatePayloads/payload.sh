@@ -82,6 +82,15 @@ process_payloads() {
         local rel_path="${src_path#$src_lib/}"
         local target_path="$TARGET_DIR/$rel_path"
         local dir_name=$(basename "$src_path")
+        local disabled_path=$(dirname "$target_path")/DISABLED.$dir_name
+
+        # 0. DISABLED PAYLOAD - skip update
+        if [ -d "$disabled_path" ]; then
+            LOG "[ DISABLED - SKIP ] $(get_dir_title $src_path)"
+            LED R FAST
+            COUNT_SKIPPED=$((COUNT_SKIPPED + 1))
+            continue
+        fi
 
         # 1. NEW PAYLOAD
         if [ ! -d "$target_path" ]; then
