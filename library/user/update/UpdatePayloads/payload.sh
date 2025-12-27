@@ -36,7 +36,8 @@ setup() {
 
     if ! which unzip > /dev/null; then
         LOG "Installing unzip..."
-        opkg update && opkg install unzip
+        opkg update
+        opkg install unzip
     fi
 }
 
