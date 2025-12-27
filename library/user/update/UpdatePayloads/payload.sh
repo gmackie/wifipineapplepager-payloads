@@ -2,7 +2,7 @@
 # Title: Update Payloads
 # Description: Downloads and syncs all payloads from github.
 # Author: cococode
-# Version: 1.1
+# Version: 1.2
 
 # === CONFIGURATION ===
 GH_ORG="hak5"
@@ -86,11 +86,9 @@ process_payloads() {
         local dir_name=$(basename "$src_path")
         local disabled_path=$(dirname "$target_path")/DISABLED.$dir_name
 
-        # 0. DISABLED PAYLOAD - skip update
+        # 0. DISABLED PAYLOAD - update the target to the disabled version
         if [ -d "$disabled_path" ]; then
-            LOG_BUFFER+="[ DISABLED - SKIP ] $(get_dir_title $src_path)\n"
-            COUNT_SKIPPED=$((COUNT_SKIPPED + 1))
-            continue
+            target_path=$disabled_path
         fi
 
         # 1. NEW PAYLOAD
