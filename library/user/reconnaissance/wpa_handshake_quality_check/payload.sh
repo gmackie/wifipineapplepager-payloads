@@ -17,15 +17,17 @@ LOG "WPA Handshake Quality Check started"
 mkdir -p "$OUTPUT_BASE/VALID_FULL" "$OUTPUT_BASE/PARTIAL" "$OUTPUT_BASE/INVALID"
 touch "$HASH_DB"
 
-PCAPS=$(ls "$HANDSHAKE_DIR"/*.pcap 2>/dev/null)
-PCAP_COUNT=$(echo "$PCAPS" | wc -w)
-
-if [ "$PCAP_COUNT" -eq 0 ]; then
+set -- "$HANDSHAKE_DIR"/*.pcap
+[ -e "$1" ] || {
   LOG "No handshake PCAP files found"
   LED BLUE
   LED WHITE
   exit 0
-fi
+}
+
+PCAPS="$@"
+PCAP_COUNT=$#
+
 
 LOG "Found $PCAP_COUNT handshake files"
 
@@ -39,7 +41,7 @@ for PCAP in $PCAPS; do
   # Check for duplicates
   HASH=$(md5sum "$PCAP" | awk '{print $1}')
 
-  if grep -q "$HASH" "$HASH_DB"; then
+  if grep -qx "$HASH" "$HASH_DB"; then
     LOG "[$INDEX/$PCAP_COUNT] Skipping duplicate: $BASENAME"
     SKIPPED=$((SKIPPED + 1))
     INDEX=$((INDEX + 1))
