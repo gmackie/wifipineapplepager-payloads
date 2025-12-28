@@ -16,4 +16,5 @@ handshake_count=$(find "$HANDSHAKE_DIR" -type f -name "*${bssid_upper}*.22000" 2
 pcap_count=$(find "$HANDSHAKE_DIR" -type f -name "*${bssid_upper}*.pcap" 2>/dev/null | wc -l)
 
 #Final output
-ALERT "#@ HACK THE PLANET @# \n\n AP SSID: $_RECON_SELECTED_AP_SSID \n "AP BSSID: $_RECON_SELECTED_AP_BSSID" \n Handshake Count: $handshake_count \n PCAP Count: $pcap_count"
+ALERT "#@ HACK THE PLANET @# \n\n AP SSID: $_RECON_SELECTED_AP_SSID \n AP BSSID: $_RECON_SELECTED_AP_BSSID \n Handshake Count: $handshake_count \n PCAP Count: $pcap_count"
+
