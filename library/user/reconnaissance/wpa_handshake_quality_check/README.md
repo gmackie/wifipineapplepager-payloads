@@ -2,7 +2,7 @@
 
 ### v1.0
 
-**Author:** benwies  
+**Author:** [benwies](https://github.com/benwies)
 **Category:** Reconnaissance
 
 ---
