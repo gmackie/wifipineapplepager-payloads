@@ -5,9 +5,9 @@
 ### Features
 
 * **Smart Interface Sorting:** Automatically prioritizes client (`wlan0cli`) and monitor (`wlan1mon`) interfaces for faster selection.
-* **True Hardware Detection:** Identifies the permanent factory MAC address for backups, ensuring "Restore" always reverts to the real hardware state.
 * **Categorized Identities:** Profiles are grouped by environment (Home, Corporate, Commercial, Industrial, Wired) for quick selection.
 * **Safety Restore:** Includes a "Restore Original" option to revert to factory settings without rebooting.
+* **True Hardware Detection:** Identifies the permanent factory MAC address for backups, ensuring "Restore" always reverts to the real hardware state.
 
 ### Workflow Tutorial
 
@@ -43,8 +43,10 @@
 
 ### Technical Notes
 
+* **Workflow:** Spoof your MAC before connecting to target network for best results.
 * **Persistence:** All changes are volatile. Rebooting the device will automatically reset the MAC address to its hardware default.
 * **Connection Drop:** Running this payload while connected to a network will drop the connection. Reconnection is required after the spoof is applied.
+
 
 
 
