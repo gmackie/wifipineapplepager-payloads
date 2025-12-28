@@ -85,7 +85,7 @@ OfficeWiFi__VALID_FULL__EAPOL4__20251228_224512.pcap
 To avoid processing the same handshake multiple times, the payload uses a hash database:
 
 ```
-/mmc/root/loot/handshake_hashes.db
+/mmc/root/loot/handshakes_sorted/handshake_hashes.db
 ```
 
 - Each processed PCAP is hashed

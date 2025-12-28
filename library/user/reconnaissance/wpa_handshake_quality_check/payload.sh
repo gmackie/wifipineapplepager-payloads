@@ -5,12 +5,10 @@
 # Version: 1.0
 # Category: reconnaissance/sniffing
 
-. /lib/hak5/commands.sh
-
 # Options
 HANDSHAKE_DIR="/mmc/root/loot/handshakes"
 OUTPUT_BASE="/mmc/root/loot/handshakes_sorted"
-HASH_DB="/mmc/root/loot/handshake_hashes.db"
+HASH_DB="/mmc/root/loot/handshakes_sorted/handshake_hashes.db"
 
 # INIT
 LED MAGENTA
@@ -78,7 +76,7 @@ for PCAP in $PCAPS; do
   echo "$HASH" >> "$HASH_DB"
   PROCESSED=$((PROCESSED + 1))
 
-  LOG "$BASENAME → $QUALITY (EAPOL=$EAPOL_COUNT)"
+LOG "[$SSID] $BASENAME → $QUALITY (EAPOL=$EAPOL_COUNT)"
 
   INDEX=$((INDEX + 1))
 done
