@@ -19,7 +19,6 @@ Steps:
 Press OK to Begin."
 
 # --- 2. SMART INTERFACE SELECTION ---
-# Prioritize interfaces by utility
 ALL_IFS=$(ls /sys/class/net | grep -v lo)
 SORTED_LIST=""
 
@@ -81,14 +80,13 @@ get_factory_mac() {
 
     # Method 2: iw phy (Best for wireless)
     if [[ -z "$perm_mac" || "$perm_mac" == "00:00:00:00:00:00" ]] && command -v iw &>/dev/null; then
-        # Find the phy associated with this interface
         local phy=$(iw dev "$iface" info 2>/dev/null | grep wiphy | awk '{print $2}')
         if [ -n "$phy" ]; then
             perm_mac=$(iw phy "phy$phy" info 2>/dev/null | grep "Perm addr" | awk '{print $3}')
         fi
     fi
 
-    # Method 3: Fallback to current address (Session Safe)
+    # Method 3: Fallback to current address
     if [[ -z "$perm_mac" || "$perm_mac" == "00:00:00:00:00:00" ]]; then
         perm_mac=$(cat /sys/class/net/$iface/address)
     fi
@@ -96,12 +94,9 @@ get_factory_mac() {
     echo "$perm_mac"
 }
 
-# Only create backup if it doesn't exist
 if [ ! -f "$BACKUP_MAC" ]; then
     REAL_MAC=$(get_factory_mac "$INTERFACE")
     echo "$REAL_MAC" > "$BACKUP_MAC"
-    
-    # Backup Hostname
     CURRENT_HOST=$(cat /proc/sys/kernel/hostname 2>/dev/null || hostname)
     echo "$CURRENT_HOST" > "$BACKUP_HOST"
 fi
@@ -134,7 +129,7 @@ if [ "$CAT_ID" -eq 0 ]; then
     NEW_MAC="$ORIG_MAC"
     NEW_NAME="$ORIG_HOST"
     CAT_NAME="Factory"
-    NEW_OUI="" # Skip random suffix logic for restore
+    NEW_OUI="" 
     
 else
     case "$CAT_ID" in
@@ -163,7 +158,8 @@ Press OK."
             elif [ "$PROF_ID" -eq 2 ]; then
                 NEW_OUI="84:C0:EF"; NEW_NAME="Samsung-TV-QLED"; TYPE="SmartTV"
             elif [ "$PROF_ID" -eq 3 ]; then
-                NEW_OUI="F4:0E:11"; NEW_NAME="Echo-Dot-LivingRoom"; TYPE="IoT"
+                # UPDATED: Amazon Technologies Inc.
+                NEW_OUI="FC:D7:49"; NEW_NAME="Echo-Dot-LivingRoom"; TYPE="IoT"
             elif [ "$PROF_ID" -eq 4 ]; then
                 NEW_OUI="00:D9:D1"; NEW_NAME="PS5-Console"; TYPE="Console"
             else exit 0; fi
@@ -207,9 +203,11 @@ Press OK."
             if [ "$PROF_ID" -eq 1 ]; then
                 NEW_OUI="00:A0:F8"; NEW_NAME="Zebra-TC52-Scanner"; TYPE="Scanner"
             elif [ "$PROF_ID" -eq 2 ]; then
-                NEW_OUI="00:09:1F"; NEW_NAME="Verifone-VX520"; TYPE="POS"
+                # UPDATED: Verifone, Inc.
+                NEW_OUI="00:0B:4F"; NEW_NAME="Verifone-VX520"; TYPE="POS"
             elif [ "$PROF_ID" -eq 3 ]; then
-                NEW_OUI="00:1E:0B"; NEW_NAME="Ingenico-iSC250"; TYPE="POS"
+                # UPDATED: Ingenico International
+                NEW_OUI="00:03:81"; NEW_NAME="Ingenico-iSC250"; TYPE="POS"
             elif [ "$PROF_ID" -eq 4 ]; then
                 NEW_OUI="AC:CC:8E"; NEW_NAME="Axis-M30-Cam"; TYPE="Camera"
             else exit 0; fi
@@ -232,7 +230,8 @@ Press OK."
             elif [ "$PROF_ID" -eq 2 ]; then
                 NEW_OUI="00:00:BC"; NEW_NAME="Allen-Bradley-PLC"; TYPE="PLC"
             elif [ "$PROF_ID" -eq 3 ]; then
-                NEW_OUI="00:10:2D"; NEW_NAME="Honeywell-HVAC-Ctl"; TYPE="HVAC"
+                # UPDATED: Honeywell GmbH
+                NEW_OUI="00:30:AF"; NEW_NAME="Honeywell-HVAC-Ctl"; TYPE="HVAC"
             elif [ "$PROF_ID" -eq 4 ]; then
                 NEW_OUI="00:00:54"; NEW_NAME="Schneider-Modicon"; TYPE="PLC"
             else exit 0; fi
@@ -255,7 +254,8 @@ Press OK."
             elif [ "$PROF_ID" -eq 2 ]; then
                 NEW_OUI="00:08:2F"; NEW_NAME="Cisco-IP-Phone"; TYPE="VoIP"
             elif [ "$PROF_ID" -eq 3 ]; then
-                NEW_OUI="00:09:1F"; NEW_NAME="Verifone-VX520-Eth"; TYPE="POS"
+                # UPDATED: Verifone, Inc.
+                NEW_OUI="00:0B:4F"; NEW_NAME="Verifone-VX520-Eth"; TYPE="POS"
             elif [ "$PROF_ID" -eq 4 ]; then
                 NEW_OUI="00:90:E8"; NEW_NAME="Moxa-NPort-5110"; TYPE="Gateway"
             else exit 0; fi
@@ -266,7 +266,6 @@ Press OK."
             ;;
     esac
 
-    # Only generate suffix if NOT restoring
     if [ -n "$NEW_OUI" ]; then
         SUFFIX=$(gen_suffix)
         NEW_MAC="${NEW_OUI}${SUFFIX}"
