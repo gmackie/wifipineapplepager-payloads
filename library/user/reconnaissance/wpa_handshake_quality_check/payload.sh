@@ -5,6 +5,8 @@
 # Version: 1.0
 # Category: reconnaissance/sniffing
 
+. /lib/hak5/commands.sh
+
 # Options
 HANDSHAKE_DIR="/mmc/root/loot/handshakes"
 OUTPUT_BASE="/mmc/root/loot/handshakes_sorted"
@@ -12,7 +14,7 @@ HASH_DB="/mmc/root/loot/handshake_hashes.db"
 
 # INIT
 LED MAGENTA
-LOG "WPA Handshake Quality Check started (fast + duplicate safe)"
+LOG "WPA Handshake Quality Check started"
 
 mkdir -p "$OUTPUT_BASE/VALID_FULL" "$OUTPUT_BASE/PARTIAL" "$OUTPUT_BASE/INVALID"
 touch "$HASH_DB"
@@ -87,4 +89,12 @@ LOG "New handshakes processed: $PROCESSED"
 LOG "Duplicates skipped: $SKIPPED"
 
 LED WHITE
+
+ALERT "WPA Handshake Quality Check complete.
+
+Files organized into:
+$OUTPUT_BASE
+
+VALID_FULL / PARTIAL / INVALID"
+
 exit 0
