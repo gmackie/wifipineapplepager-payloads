@@ -43,6 +43,7 @@
 
 ### Technical Notes
 
+* **Workflow:** For best results spoof network interface MAC address before connecting to target network.
 * **Persistence:** All changes are volatile. Rebooting the device will automatically reset the MAC address to its hardware default.
 * **Connection Drop:** Running this payload while connected to a network will drop the connection. Reconnection is required after the spoof is applied.
 
@@ -69,4 +70,5 @@
 | | Schneider Electric | `00:00:54` | Schneider Electric | ✅ Verified |
 | **Ethernet** | MSI Gaming Desktop | `D8:CB:8A` | Micro-Star Intl (MSI) | ✅ Verified |
 | | Moxa NPort Gateway | `00:90:E8` | Moxa Technologies Corp | ✅ Verified |
+
 
