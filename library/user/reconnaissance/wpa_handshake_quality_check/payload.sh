@@ -15,7 +15,7 @@ LED MAGENTA
 LOG "WPA Handshake Quality Check started"
 
 mkdir -p "$OUTPUT_BASE/VALID_FULL" "$OUTPUT_BASE/PARTIAL" "$OUTPUT_BASE/INVALID"
-touch "$HASH_DB"
+[ -f "$HASH_DB" ] || touch "$HASH_DB"
 
 set -- "$HANDSHAKE_DIR"/*.pcap
 [ -e "$1" ] || {
@@ -73,12 +73,18 @@ for PCAP in $PCAPS; do
   fi
 
   NEW_NAME="${SSID_CLEAN}__${QUALITY}__EAPOL${EAPOL_COUNT}__$(date +%Y%m%d_%H%M%S).pcap"
-  cp "$PCAP" "$DEST/$NEW_NAME"
+
+  if ! cp "$PCAP" "$DEST/$NEW_NAME"; then
+    LOG "[$SSID] Failed to copy $BASENAME → $DEST"
+    LED RED
+    INDEX=$((INDEX + 1))
+    continue
+  fi
 
   echo "$HASH" >> "$HASH_DB"
   PROCESSED=$((PROCESSED + 1))
 
-LOG "[$SSID] $BASENAME → $QUALITY (EAPOL=$EAPOL_COUNT)"
+  LOG "[$SSID] $BASENAME → $QUALITY (EAPOL=$EAPOL_COUNT)"
 
   INDEX=$((INDEX + 1))
 done
