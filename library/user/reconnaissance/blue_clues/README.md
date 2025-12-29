@@ -1,56 +1,72 @@
 # Blue Clues
 
-**Blue Clues** is a Bluetooth reconnaissance tool for the WiFi Pineapple Pager. 
+**Blue Clues** is an active Bluetooth auditing tool for the WiFi Pineapple Pager. Unlike passive scanners that simply listen, Blue Clues actively interrogates devices to uncover their **Vendor**, **Device Type**, and **Services**.
 
-**Update (v2): Passive Scanning Mode**
-This tool has been reworked to focus on stealth and autonomy. Instead of manual "scan-and-review" cycles, Blue Clues now acts as a **Passive Scanner**. You configure the duration and feedback behavior once, and the device runs silently in the background, only alerting you when a target is captured.
+**Update: Active Audit & Deep Scan**
+This tool has been upgraded from a simple scanner to an **Active Auditor**. It now performs OUI Lookups, Class-of-Device translation (e.g., identifying "Headsets" vs "Phones"), and Service Discovery (SDP) to reveal what a device is actually capable of.
 
 ---
 
 ### Features
-* **Passive/Silent Operation:** The screen remains dark during operation to maintain stealth.
-* **Custom Feedback:** Configure alerts (LED, Vibe, Both, or Silent) to trigger *only* when a new device is found.
-* **Auto-Logging:** All findings are appended to a local file in real-time.
-* **Timestamped Entries:** Every captured device is logged with the exact time of discovery.
+* **Active Interrogation:** Connects to devices to request their "Real Name" if they are hiding it.
+* **Deep Scan (SDP):** Optional mode to enumerate all services (Audio, File Transfer, etc.) offered by a device.
+* **Vendor & Type Lookup:** Automatically translates MAC addresses into Manufacturers (OUI) and Hex Codes into Device Types (e.g., `[Headset]`, `[Smart Phone]`).
+* **Smart Deduplication:** Tracks devices in memory to prevent duplicate alerts for the same target.
+* **Ignore List:** Define a blacklist of MAC addresses (like your own phone) to remain invisible during scans.
 
 ---
 
 ### Workflow Tutorial
 
-**1. Workflow Briefing**
-The payload begins by outlining the passive scanning process.
-
+**1. Mission Briefing**
+The payload begins by confirming the "Audit" workflow, which involves active connection attempts.
 ![Workflow](screens/Capture_01.png)
 
 **2. Feedback Configuration**
-First, decide how the device should alert you when a Bluetooth device is detected.
-* **Silent:** Logs data but gives no physical cue.
-* **LED/Vibe:** Visual or haptic confirmation of a capture.
-* 
+Decide how the device should alert you when a *new* unique target is identified.
+* **Silent:** Logs data invisibly.
+* **LED/Vibe:** Visual (Red Flash) or Haptic buzz upon finding a new device.
 ![Options](screens/Capture_02.png)
 
-**3. Select Mode**
-Use the number picker to confirm your feedback selection.
-
-![Feedback Picker](screens/Capture_03.png)
+**3. Deep Scan Selection**
+Choose your depth of analysis:
+* **No (Standard):** Fast. Grabs MAC, Vendor, Class, and Name. Skips Service Discovery if the device name is known.
+* **Yes (Slower):** Thorough. Connects to *every* device to list all available services.
+![Deep Scan](screens/Capture_06.png)
 
 **4. Set Duration**
-Enter the duration for the passive scan (in minutes). The device will loop continuously for this timeframe.
+Enter the runtime for the audit (in minutes).
+![Duration Picker](screens/Capture_05.png)
 
-![Duration Picker](screens/Capture_04.png)
-
-**5. Start Run**
-The device confirms your settings. Once you press **OK**, the screen goes dark and the passive scan begins.
-* *Note: Press Cancel at any time to abort the session.*
-
-![Start](screens/Capture_05.png)
+**5. Execution**
+The device confirms the save location and begins the audit loop.
+![Start](screens/Capture_08.png)
 
 ---
 
-### Log Format
-Files are saved as `blueclues_YYYYMMDD_HHMMSS.txt` in the script directory.
+### 📊 Log Viewer Integration
 
-```text
-18:05:01    00:11:22:33:44:55    Mike's iPhone
+Blue Clues is designed to work seamlessly with the **Log Viewer** payload. Upon completion, it automatically passes the captured data to the viewer for immediate analysis.
 
-18:05:12    AA:BB:CC:DD:EE:FF    Tesla Model 3
+**Sample Output:**
+![Log View](screens/Capture_09.png)
+
+---
+
+### ⚙️ Configuration & Integration
+
+#### Ignore List
+To hide specific devices (like your own phone) from the scan, create a file named `ignore_list.txt` in the same directory as the payload. Add one MAC address per line.
+
+#### Headless Integration
+You can call the Log Viewer from this payload (or others) using the following arguments:
+
+| Argument | Description | Example |
+| :--- | :--- | :--- |
+| **$1** | `File Path` | Absolute path to the log file. |
+| **$2** | `Mode` | `1` = Color (Parsed), `2` = Raw Text. |
+
+**Example Call:**
+```bash
+/root/payloads/user/general/log_viewer/payload.sh "/root/loot/blue_clues/scan.txt" 1
+```
