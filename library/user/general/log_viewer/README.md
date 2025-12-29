@@ -10,6 +10,7 @@
 * **D-Pad Navigation:** Vertical up/down scrolling of log files for easier access.
 * **Large File Safety:** Automatically detects massive files and offers to "Tail" (view the last 60 lines) to prevent device freezing.
 
+* **New Headless Mode!:** Use Log Viewer to parse your log file and output to the console right from your payload!
 ---
 
 ### Workflow Tutorial
@@ -56,24 +57,69 @@ The tool compiles the render script. Press **OK** to generate the view.
 The log is displayed on screen.
 * **Yellow:** Timestamp
 * **Blue:** IP or MAC Address
-* **Green/Red:** Username/Password
+* **Green/Red:** Status (Success/Failure)
 * **White:** General Info
 
 ![Final View](screens/Capture_08.png)
 
 ---
 
-### Log Format
-The tool parses standard text logs found in `/root/loot`. The Deconstruction Engine breaks them down visually. Below is an example of an Nmap scan result:
+## Integration / Headless Usage
 
-```text
-TIME: 11:21:44
-ADDR: 192.168.50.5
-INFO: # Nmap 7.95 scan initiated Tue Dec 23 2025
-as: nmap -Pn -sS -F -oA
-/root/loot/nmapTarget/2025-12-23T11:21:37-05:00
-/24
----
-ADDR: 192.168.50.1
-INFO: Host: () Status: Up
----
+You can call the Log Viewer from any other script (like Blue Clues or Counter Snoop) by passing arguments directly.
+
+### Arguments
+
+| Position | Argument | Description | Options |
+| :--- | :--- | :--- | :--- |
+| **$1** | `File Path` | Absolute path to the log file. | `/root/loot/scan.txt` |
+| **$2** | `Mode` | How the log should be rendered. | `1` = **Parsed** (Color)<br>`2` = **Raw** (Text) |
+
+### Example Command
+
+To open a specific log file immediately in **Color Mode**:
+
+```bash
+/root/payloads/user/general/log_viewer/payload.sh "/root/loot/blue_clues/scan_results.txt" 1
+```
+
+### Headless Examples
+
+**1. Basic Integration**
+# === ADD THIS TO THE END OF YOUR PAYLOAD ===
+
+# 1. Define the path to the Viewer Payload
+# Make sure this matches where you installed the Log Viewer!
+VIEWER="/root/payloads/user/general/log_viewer/payload.sh"
+
+# 2. Check if it exists, then run it
+if [ -f "$VIEWER" ]; then
+    # Arg 1: The Log File Path
+    # Arg 2: Mode (1 = Color/Parsed, 2 = Raw Text)
+    /bin/bash "$VIEWER" "$LOG_FILE" 1
+else
+    # Fallback if the viewer is missing
+    echo "Log Viewer not found. Saved to $LOG_FILE"
+fi
+
+**2. Interactive Choice**
+# === ADD THIS TO THE END OF YOUR PAYLOAD ===
+
+VIEWER="/root/payloads/user/general/log_viewer/payload.sh"
+
+# Ask the user
+PROMPT "SCAN COMPLETE
+
+1. View Log Now
+2. Exit
+
+Press OK."
+CHOICE=$(NUMBER_PICKER "Select Option" 1)
+
+if [ "$CHOICE" -eq 1 ] && [ -f "$VIEWER" ]; then
+    # Launch Viewer in Color Mode (1)
+    /bin/bash "$VIEWER" "$LOG_FILE" 1
+else
+    # Just exit cleanly
+    echo "Exiting..."
+fi
