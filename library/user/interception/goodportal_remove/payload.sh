@@ -149,13 +149,13 @@ LOG "Verifying cleanup..."
 if netstat -plant 2>/dev/null | grep -q ':1053'; then
     LOG "  WARNING: DNS hijacking still active on port 1053"
 else
-    LOG "  SUCCESS: DNS hijacking stopped"
+    LOG green "  SUCCESS: DNS hijacking stopped"
 fi
 
 # Check if firewall rules are removed
 RULE_COUNT=$(uci show firewall | grep -c "GoodPortal" || true)
 if [ "$RULE_COUNT" -eq 0 ]; then
-    LOG "  SUCCESS: All firewall rules removed"
+    LOG green "  SUCCESS: All firewall rules removed"
 else
     ERROR_DIALOG "  WARNING: $RULE_COUNT GoodPortal rules still present"
 fi
@@ -163,11 +163,11 @@ fi
 # Check IPv6 status
 IPV6_STATUS=$(sysctl net.ipv6.conf.br-lan.disable_ipv6 2>/dev/null | awk '{print $NF}')
 if [ "$IPV6_STATUS" = "0" ]; then
-    LOG "  SUCCESS: IPv6 re-enabled on br-lan"
+    LOG green "  SUCCESS: IPv6 re-enabled on br-lan"
 else
     ERROR_DIALOG "  WARNING: IPv6 may still be disabled on br-lan"
 fi
 
-LOG "NOTE: nginx and PHP packages will remain installed."
+LOG yellow "NOTE: nginx and PHP packages will remain installed."
 
 exit 0
