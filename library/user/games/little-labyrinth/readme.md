@@ -12,7 +12,7 @@
 ## Description
 A text adventure fill with Hak5 law.
  
-Ported from the keycroc payoad
+Ported from the keycroc payload
 https://github.com/hak5/keycroc-payloads/tree/master/payloads/library/general/Multi_HID_Little-Labyrinth
 
 ## Buttons
