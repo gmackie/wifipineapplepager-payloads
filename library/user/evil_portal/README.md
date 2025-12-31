@@ -29,6 +29,12 @@ PentestPlaybook
 
 Evil Portal is automatically enabled and started during installation.
 
+### Triggering the Captive Portal
+After connecting to the Evil WPA network, the captive portal should appear automatically. If it doesn't:
+1. Go to WiFi settings and tap "Sign in to network" or "Sign In"
+2. On Android, tap the WiFi network name to see the sign-in option
+3. Open any browser and navigate to a non-HTTPS site (e.g., `http://example.com`)
+   
 ### Reverting to Default Portal
 To switch back to the default portal, run `default_portal` or `restart_evil_portal`.
 
