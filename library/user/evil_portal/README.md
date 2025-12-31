@@ -87,6 +87,13 @@ logread | grep -i error | tail -20
 - **"Package not found"** - Run `opkg update` first
 - **Network errors** - Verify internet connection is active
 
+### Portal Not Loading After Activation
+If a newly activated portal doesn't appear on your device:
+1. Connect to `172.16.52.1` on your PC browser to confirm the correct portal is loaded
+2. Disconnect and reconnect your test device from the WiFi network
+3. Wait longer - some devices cache the previous portal and take time to refresh
+4. Try "Forget Network" on your device and reconnect fresh
+   
 ---
 
 ## Disclaimer
