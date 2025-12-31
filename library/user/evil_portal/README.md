@@ -105,7 +105,8 @@ The authors and contributors are not responsible for misuse or damage caused by 
 ---
 
 ## Credits
-Adapted from WiFi Pineapple Mark VII Evil Portal module.
+- Evil Portal originally developed by newbi3 for WiFi Pineapple Mark VII
+- Adapted for WiFi Pineapple Pager by PentestPlaybook
 
 ## Resources
 - [WiFi Pineapple Docs](https://docs.hak5.org/)
