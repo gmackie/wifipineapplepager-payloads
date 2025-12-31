@@ -1,6 +1,6 @@
 # HIDX StealthLink
 
-This payload is the Wifi Pineapple Pager implementation of the HIDX Stealthlink Client for O.MG Devices. It allows for stealthy remote access to host machines - even airgapped systems.  The O.MG Device can be connected to a target system via USB, and the HIDX Stealthlink Client on the pager will connect to the AP hosted by the O.MG Device, allowing for remote command execution and data exfiltration.
+This payload is the Wifi Pineapple Pager implementation of the HIDX Stealthlink Client for O.MG Devices. It allows for stealthy remote access to host machines - even airgapped systems.  The O.MG connects to the Pager's wireless network, and the Pager acts as a bridge from your terminal device (smartphone, laptop, etc.) to the target system.
 
 ## O.MG Device & Host Setup
 
