@@ -24,5 +24,5 @@ You can look at the logs live as they update every so often on your mobile devic
 As you walk it logs all the information found in the screenshot.
 
 
-Disclaimer: This is for educational purposes only!
+Disclaimer: This is for educational purposes only!!
 

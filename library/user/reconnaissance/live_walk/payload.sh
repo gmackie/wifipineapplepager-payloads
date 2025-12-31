@@ -1,6 +1,6 @@
 #!/bin/bash
 # Title: live_walk
-# Description: A WiFi logger that records networks in detail as you walk or perform audits. 
+# Description: A WiFi logger that records networks in detail as you walk or perform audits . 
 # Author: MusicalVR
 
 LOOTDIR="/root/loot/live_walk"
