@@ -29,6 +29,17 @@ PentestPlaybook
 
 Evil Portal is automatically enabled and started during installation.
 
+## Installation Options
+
+### Isolated Subnet
+During installation, you will be prompted to enable an isolated subnet. This option:
+
+- Creates a separate network (10.0.0.0/24) for the Evil WPA access point
+- Ensures the captive portal only appears when clients connect to Evil WPA
+- Prevents the portal from affecting clients on the management network (172.16.52.0/24)
+
+**Recommended:** Enable isolated subnet if you want the portal to only capture credentials from Evil WPA clients.
+
 ## Features
 - Automatic captive portal detection for iOS and Android devices
 - Credential capture to `/root/logs/credentials.json`
@@ -83,7 +94,7 @@ These payloads are provided for security research, penetration testing, and educ
 
 **By using these payloads, you agree to:**
 - Only use on networks/systems you own or have explicit permission to test
-- Comply with all local, state, and federal laws
+- Comply with all local, state, and federal law
 - Take full responsibility for your actions
 
 The authors and contributors are not responsible for misuse or damage caused by these tools.
