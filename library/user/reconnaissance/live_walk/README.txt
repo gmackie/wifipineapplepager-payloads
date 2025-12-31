@@ -25,4 +25,4 @@ As you walk it logs all the information found in the screenshot.
 
 
 Disclaimer: This is for educational purposes only!
-Please don't do anything stupid with it.
+
