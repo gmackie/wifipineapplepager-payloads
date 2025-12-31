@@ -17,15 +17,13 @@ PentestPlaybook
 | `stop_evil_portal` | Stops the Evil Portal service |
 | `restart_evil_portal` | Restarts the Evil Portal service |
 | `default_portal` | Activates the default captive portal theme |
-| `wordpress_portal` | Activates the WordPress login captive portal theme |
 
 ## Requirements
 - WiFi Pineapple Pager (OpenWrt 24.10.1)
 - Active internet connection (for initial package installation)
 
 ## Installation Order
-1. Run `install_evil_portal`
-2. Run `wordpress_portal` to activate the WordPress captive portal
+1. Run `install_evil_portal` first
 
 Evil Portal is automatically enabled and started during installation.
 
@@ -53,7 +51,6 @@ During installation, you will be prompted to enable an isolated subnet. This opt
 - Automatic captive portal detection for iOS and Android devices
 - Credential capture to `/root/logs/credentials.json`
 - Client authorization management via nftables
-- WordPress portal includes all static assets (no external downloads)
 
 ## Quick Reference
 
