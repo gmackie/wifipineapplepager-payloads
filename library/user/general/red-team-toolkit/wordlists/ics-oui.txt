@@ -1,0 +1,29 @@
+# ICS/OT Vendor MAC OUI Prefixes
+# Format: OUI,Vendor
+00:00:BC,Rockwell Automation
+00:01:05,Beckhoff Automation
+00:0B:AB,Advantech
+00:0E:8C,Siemens AG
+00:1C:06,Siemens AG
+00:1F:F8,Siemens AG
+00:30:DE,Wago
+00:40:84,Honeywell
+00:50:C2,IEEE (often PLCs)
+00:60:35,Dallas Semiconductor
+00:80:F4,Schneider Electric
+00:A0:12,Schneider Electric
+00:C0:E4,Siemens Automation
+08:00:06,Siemens AG
+08:00:86,GE Fanuc
+28:63:36,Siemens AG
+48:50:73,Rockwell Automation
+5C:86:5C,Honeywell
+64:00:F1,Cisco (Industrial)
+70:B3:D5,Moxa
+80:09:02,ABB
+98:5D:AD,Rockwell Automation
+AC:64:17,Honeywell
+B4:B5:2F,Hewlett-Packard (Historians)
+C8:3E:A7,Siemens AG
+D4:8C:B5,Cisco (Industrial)
+E0:DC:A0,Siemens AG
