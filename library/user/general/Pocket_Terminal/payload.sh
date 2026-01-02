@@ -3,11 +3,13 @@
 # Description: Pure custom command input.
 # Controls: Up/Down to Scroll
 # Author: Zeriaklr
-# Version: 2.0
+# Version: 2.1
 
 # Define and create the LOOT directory
 LOOTDIR=/root/loot/Term
 mkdir -p $LOOTDIR
+#Change the loctaion the command are run to the home folder mostly for ls and better nav in a single command
+cd
 
 while true
 do 
@@ -23,7 +25,7 @@ do
     LOG "Results will be saved to: $lootfile if specified\n"
 
     #Shows the output of the command that was entered
-    $command | tee $lootfile | tr '\n' '\0' | xargs -0 -n 1 LOG green
+    $command | tee $lootfile | tr '\n' '\0' | xargs -0 -n 1 LOG green ""
 
     #Ask to save the out put so that the user can review at a later time and save the out come
     save=$(NUMBER_PICKER "1 Save, 2 Del" 2)

@@ -21,3 +21,7 @@ Version 2.0
  - Implemented a persistent loop, allowing multiple commands to be executed without restarting the payload.
  - Added color-coded logging to improve readability.
  - Added code comments for easier navigation and maintenance.
+
+Version 2.1
+- Bug fix when running a command with no output it would say "green".
+- Changed where commands are ran to the root directory.
