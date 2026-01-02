@@ -1,4 +1,4 @@
-# Red Team Toolkit v2.0
+# Red Team Toolkit v2.2
 
 Swiss-army-knife payload for IT/OT penetration testing engagements on the WiFi Pineapple Pager.
 
@@ -8,26 +8,53 @@ Swiss-army-knife payload for IT/OT penetration testing engagements on the WiFi P
 - ARP scan, ping sweep, port scan
 - Service identification and banner grabbing
 - OT device fingerprinting (MAC OUI, port-based classification)
-- Passive broadcast listening (mDNS, LLDP, Profinet DCP)
+- Active Directory enumeration (users, groups, computers, BloodHound)
 - Asset inventory aggregation
 
-### OT Protocol Attacks
+### OT Protocol Attacks (8 protocols)
 - **Modbus/TCP**: Device ID, read/write coils and registers
 - **EtherNet/IP (CIP)**: Identity, tag enumeration, read/write
 - **OPC UA**: Browse, read, write, security audit
-- *(More protocols in development: DNP3, PROFINET, BACnet, S7comm)*
+- **DNP3**: Device identification, point read, integrity scan
+- **PROFINET**: DCP discovery, passive traffic capture
+- **BACnet**: Who-Is discovery, property read/write
+- **S7comm**: CPU info, memory read/write
+- **IEC 61850**: MMS browse, GOOSE sniffing
 
 ### Credential Harvesting
 - Default credential checker (50+ OT vendor defaults)
 - SNMP community string enumeration
-- Passive hash capture (NTLM, HTTP Basic)
-- Responder integration (laptop mode)
+- Passive hash capture (NTLM, HTTP Basic, FTP, Telnet)
+- Responder integration with full control (laptop mode)
+- NTLM relay attacks (SMB, LDAP, HTTP)
+- Kerberos attacks (Kerberoasting, AS-REP roasting)
+- OT protocol authentication sniffing
 
-### Wireless & Physical
-- WiFi passive recon, handshake capture
+### Network Attacks
+- ARP spoofing / MITM with traffic capture
+- SSL stripping
+- DNS spoofing and hijacking
+- DNS rebinding setup
+- VLAN hopping (DTP, double tagging)
+
+### Wireless Attacks
+- WiFi passive recon
+- Handshake capture
+- WPA/WPA2 cracking (hashcat integration)
+- Targeted deauthentication (single/broadcast/continuous)
+- Evil Twin AP with captive portal
+
+### Physical/Serial
 - RS485 serial monitoring
 - CAN bus monitoring
 - RTL-SDR
+
+### Reporting
+- Engagement timeline generation
+- Executive summary export
+- Technical findings report
+- Credential report
+- Full archive export (tar.gz)
 
 ## Operating Modes
 
@@ -49,16 +76,13 @@ Swiss-army-knife payload for IT/OT penetration testing engagements on the WiFi P
 Edit `scripts/config.sh`:
 
 ```bash
-# Engagement
 ENGAGEMENT_NAME="client-2025"
 TARGET_NETWORK="192.168.1.0/24"
 EXCLUDE_IPS="192.168.1.1"
 
-# Safety
 SAFE_MODE=1              # Confirm before destructive actions
 PASSIVE_ONLY=0           # Set to 1 to block all active attacks
 
-# Laptop Integration
 LAPTOP_ENABLED=0         # Set to 1 to enable
 LAPTOP_HOST="user@10.0.0.50"
 LAPTOP_KEY="/root/.ssh/id_rsa"
@@ -74,16 +98,18 @@ red-team-toolkit/
 │   ├── common.sh           # Shared helpers
 │   ├── menu.sh             # Menu system
 │   └── modules/
-│       ├── discovery/      # Network scanning
-│       ├── ot-protocols/   # ICS protocol attacks
-│       ├── credentials/    # Credential harvesting
-│       ├── wireless/       # WiFi attacks
-│       ├── physical/       # Serial, CAN, SDR
+│       ├── discovery/      # Network scanning (5 modules)
+│       ├── ot-protocols/   # ICS protocol attacks (8 modules)
+│       ├── credentials/    # Credential harvesting (7 modules)
+│       ├── network/        # Network attacks (3 modules)
+│       ├── wireless/       # WiFi attacks (6 modules)
+│       ├── physical/       # Serial, CAN, SDR (3 modules)
+│       ├── reporting/      # Timeline and export (2 modules)
 │       └── laptop/         # SSH wrappers
 ├── wordlists/
-│   ├── ot-defaults.csv     # Vendor default creds
-│   ├── snmp-communities.txt
-│   └── ics-oui.txt         # MAC vendor lookup
+│   ├── ot-defaults.csv     # 39 vendor default creds
+│   ├── snmp-communities.txt # 25 community strings
+│   └── ics-oui.txt         # 27 ICS vendor MACs
 └── artifacts/              # Scan outputs
 ```
 
@@ -92,13 +118,11 @@ red-team-toolkit/
 For full capability, set up a laptop with:
 
 ```bash
-# Install tools
-apt install nmap responder impacket-scripts snmp
+apt install nmap responder impacket-scripts snmp hostapd dnsmasq \
+    arpspoof ettercap-text-only sslstrip yersinia bloodhound
 
-# Python libraries
-pip3 install pycomm3 opcua
+pip3 install pycomm3 opcua scapy
 
-# SSH key exchange
 ssh-copy-id user@pager-ip
 ```
 
@@ -112,12 +136,40 @@ ssh-copy-id user@pager-ip
 ## Artifacts
 
 All outputs saved to `artifacts/<engagement_name>/`:
-- `arp_scan_*.txt` - ARP scan results
-- `fingerprint_*.txt` - OT device profiles
-- `inventory.txt` - Aggregated asset inventory
-- `modbus_*.txt` - Modbus interaction logs
-- `creds_*.txt` - Credential check results
-- `*.pcap` - Packet captures
+
+| Pattern | Description |
+|---------|-------------|
+| `arp_scan_*.txt` | ARP scan results |
+| `fingerprint_*.txt` | OT device profiles |
+| `inventory.txt` | Aggregated asset inventory |
+| `ad_*.txt` | Active Directory enumeration |
+| `modbus_*.txt` | Modbus interaction logs |
+| `enip_*.txt` | EtherNet/IP results |
+| `opcua_*.txt` | OPC UA interactions |
+| `s7comm_*.txt` | Siemens S7 results |
+| `bacnet_*.txt` | BACnet discoveries |
+| `creds_*.txt` | Credential check results |
+| `kerberoast_*.txt` | Kerberos hashes |
+| `responder/` | Captured NTLM hashes |
+| `portal/` | Captive portal credentials |
+| `mitm_*.pcap` | MITM traffic captures |
+| `timeline.txt` | Engagement timeline |
+| `executive_summary.txt` | Executive report |
+| `*.pcap` | Packet captures |
+
+## Module Count
+
+| Category | Modules |
+|----------|---------|
+| Discovery | 5 |
+| OT Protocols | 8 |
+| Credentials | 7 |
+| Network | 3 |
+| Wireless | 6 |
+| Physical | 3 |
+| Reporting | 2 |
+| Laptop | 1 |
+| **Total** | **35** |
 
 ## Requirements
 
@@ -128,7 +180,14 @@ All outputs saved to `artifacts/<engagement_name>/`:
 - nmap, arp-scan, fping
 - snmpwalk, mbpoll
 - python3 with opcua library
+- aireplay-ng or mdk4 (for deauth)
+- hostapd, dnsmasq (for evil twin)
+- arpspoof, ettercap (for MITM)
+- hcxpcapngtool (for WPA hash conversion)
 
 ### Laptop-assisted
 - SSH access to laptop with pentest tools
-- Responder, Impacket, Nmap, pycomm3
+- Responder, Impacket (ntlmrelayx, GetUserSPNs), Nmap
+- hashcat with GPU support
+- BloodHound (bloodhound-python)
+- CrackMapExec

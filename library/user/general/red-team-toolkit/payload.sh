@@ -2,7 +2,7 @@
 # Title: Red Team Toolkit v2.0
 # Description: Swiss-army-knife payload for IT/OT penetration testing
 # Author: YourTeam
-# Version: 2.0
+# Version: 2.2
 # Category: general
 # Net Mode: NAT
 #
@@ -27,7 +27,7 @@ source "$DIR/scripts/modules/laptop/ssh_exec.sh"
 ensure_dir "$ARTIFACT_DIR" "$LOG_DIR"
 
 # Source module files
-for module_dir in discovery ot-protocols credentials wireless physical laptop; do
+for module_dir in discovery ot-protocols credentials wireless physical laptop reporting network; do
   if [[ -d "$DIR/scripts/modules/$module_dir" ]]; then
     for f in "$DIR/scripts/modules/$module_dir"/*.sh; do
       [[ -f "$f" ]] && source "$f"
@@ -45,6 +45,7 @@ menu_discovery() {
       "Port Scan" \
       "Service Identification" \
       "OT Device Fingerprint" \
+      "Active Directory Enum" \
       "View Asset Inventory")
     
     case "$choice" in
@@ -52,7 +53,8 @@ menu_discovery() {
       2) have rt_port_scan && rt_port_scan || LOG red "Module not implemented" ;;
       3) have rt_service_id && rt_service_id || LOG red "Module not implemented" ;;
       4) have rt_ot_fingerprint && rt_ot_fingerprint || LOG red "Module not implemented" ;;
-      5) have rt_asset_inventory && rt_asset_inventory || LOG red "Module not implemented" ;;
+      5) have rt_ad_enum && rt_ad_enum || LOG red "Module not implemented" ;;
+      6) have rt_asset_inventory && rt_asset_inventory || LOG red "Module not implemented" ;;
       0|"") return ;;
     esac
     
@@ -98,6 +100,7 @@ menu_credentials() {
       "Passive Hash Capture" \
       "Responder (laptop)" \
       "NTLM Relay (laptop)" \
+      "Kerberos Attacks" \
       "Protocol Auth Sniff")
     
     case "$choice" in
@@ -106,7 +109,8 @@ menu_credentials() {
       3) have rt_hash_capture && rt_hash_capture || LOG red "Module not implemented" ;;
       4) have rt_responder && rt_responder || LOG red "Module not implemented" ;;
       5) have rt_ntlm_relay && rt_ntlm_relay || LOG red "Module not implemented" ;;
-      6) have rt_protocol_auth && rt_protocol_auth || LOG red "Module not implemented" ;;
+      6) have rt_kerberos && rt_kerberos || LOG red "Module not implemented" ;;
+      7) have rt_protocol_auth && rt_protocol_auth || LOG red "Module not implemented" ;;
       0|"") return ;;
     esac
     
@@ -120,6 +124,9 @@ menu_wireless() {
     choice=$(menu_pick "Wireless Attacks" \
       "Passive Recon" \
       "Handshake Capture" \
+      "WPA Cracking" \
+      "Targeted Deauth" \
+      "Evil Twin AP" \
       "Deauth Watch")
     
     case "$choice" in
@@ -129,7 +136,10 @@ menu_wireless() {
           have rt_handshake_capture && rt_handshake_capture "$DIR" "$ARTIFACT_DIR" "$LOG_DIR" "$CHANNEL_ALLOWLIST" "$MAX_DURATION_SEC" "$BSSID_SCOPE" || LOG red "Module error"
         fi
         ;;
-      3) have rt_deauth_watch && rt_deauth_watch "$DIR" "$ARTIFACT_DIR" "$LOG_DIR" "$CHANNEL_ALLOWLIST" "$MAX_DURATION_SEC" "$BSSID_SCOPE" || LOG red "Module error" ;;
+      3) have rt_wpa_crack && rt_wpa_crack || LOG red "Module not implemented" ;;
+      4) have rt_deauth && rt_deauth || LOG red "Module not implemented" ;;
+      5) have rt_evil_twin && rt_evil_twin || LOG red "Module not implemented" ;;
+      6) have rt_deauth_watch && rt_deauth_watch "$DIR" "$ARTIFACT_DIR" "$LOG_DIR" "$CHANNEL_ALLOWLIST" "$MAX_DURATION_SEC" "$BSSID_SCOPE" || LOG red "Module error" ;;
       0|"") return ;;
     esac
     
@@ -279,39 +289,77 @@ menu_configure() {
   done
 }
 
-# === MAIN MENU ===
+menu_network() {
+  while true; do
+    local choice
+    choice=$(menu_pick "Network Attacks" \
+      "ARP Spoof / MITM" \
+      "DNS Spoofing" \
+      "VLAN Hopping")
+    
+    case "$choice" in
+      1) have rt_mitm && rt_mitm || LOG red "Module not implemented" ;;
+      2) have rt_dns_spoof && rt_dns_spoof || LOG red "Module not implemented" ;;
+      3) have rt_vlan_hop && rt_vlan_hop || LOG red "Module not implemented" ;;
+      0|"") return ;;
+    esac
+    
+    PROMPT "Press button to continue"
+  done
+}
+
+menu_reporting() {
+  while true; do
+    local choice
+    choice=$(menu_pick "Reporting" \
+      "Generate Timeline" \
+      "Executive Summary" \
+      "Technical Findings" \
+      "Credential Report" \
+      "Export Archive")
+    
+    case "$choice" in
+      1) have rt_timeline && rt_timeline || LOG red "Module not implemented" ;;
+      2) have rt_export && rt_export || LOG red "Module not implemented" ;;
+      3) have export_technical && export_technical || LOG red "Module not implemented" ;;
+      4) have export_credentials && export_credentials || LOG red "Module not implemented" ;;
+      5) have export_archive && export_archive || LOG red "Module not implemented" ;;
+      0|"") return ;;
+    esac
+    
+    PROMPT "Press button to continue"
+  done
+}
 
 main_menu() {
-  LOG green "Red Team Toolkit v2.0 loaded"
+  LOG green "Red Team Toolkit v2.2 loaded"
   LOG "Artifacts: $ARTIFACT_DIR"
   
   while true; do
     local choice
-    choice=$(menu_pick "RED TEAM TOOLKIT v2.0" \
+    choice=$(menu_pick "RED TEAM TOOLKIT v2.2" \
       "Discovery & Mapping" \
       "OT Protocol Attacks" \
       "Credential Harvesting" \
+      "Network Attacks" \
       "Wireless Attacks" \
       "Physical/Serial" \
       "Laptop Tools" \
+      "Reporting" \
       "---" \
-      "Configure Engagement" \
-      "Export Artifacts")
+      "Configure Engagement")
     
     case "$choice" in
       1) menu_discovery ;;
       2) menu_ot_protocols ;;
       3) menu_credentials ;;
-      4) menu_wireless ;;
-      5) menu_physical ;;
-      6) menu_laptop ;;
-      7) ;; # separator
-      8) menu_configure ;;
-      9)
-        LOG "Artifacts in: $ARTIFACT_DIR"
-        ls -la "$ARTIFACT_DIR" 2>/dev/null || LOG "No artifacts yet"
-        PROMPT "Press button to continue"
-        ;;
+      4) menu_network ;;
+      5) menu_wireless ;;
+      6) menu_physical ;;
+      7) menu_laptop ;;
+      8) menu_reporting ;;
+      9) ;;
+      10) menu_configure ;;
       0|"")
         LOG "Exiting toolkit"
         exit 0
