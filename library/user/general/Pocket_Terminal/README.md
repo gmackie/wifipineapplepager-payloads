@@ -1,4 +1,4 @@
-Payload inspired from live stream done on 21/31/2025 about 2hours and 13 min into the stream
+Payload inspired from the live stream done on 12/31/2025, about 2hours and 13 min into the stream
 
 Use the Up and Down arrow keys to scroll; press B to exit the terminal.
 
