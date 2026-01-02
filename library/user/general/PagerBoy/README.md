@@ -1,4 +1,4 @@
-# 📟 PagerBoy
+# 📟 PagerBoy - WiFi Pineapple Pager / Mobile Management UI
 ## *CLASSIFIED: FOR YOUR EYES ONLY!*
 
 <div align="center">
@@ -59,7 +59,7 @@ Once activated, refresh your browser. You are now undercover!
 ### 🏆 SHOUT-OUTS
 
 🌟 **FIELD REPORT:**
-A massive thank you to Agent **f3bandit**! That awesome **Final Fantasy** theme you see on the screens? That's their work. It makes the WiFi Pineapple look perfectly innocent in the field.
+A massive thank you to [**f3bandit**](https://github.com/f3bandit)! That awesome **Final Fantasy** theme you see on the screens? That's their work. It makes the WiFi Pineapple look perfectly innocent in the field.
 
 ---
 
@@ -67,3 +67,4 @@ A massive thank you to Agent **f3bandit**! That awesome **Final Fantasy** theme 
   <sub>* This device will not self-destruct in 5 seconds. Batteries not included. No cheat codes required. *</sub>
 
 </div>
+
