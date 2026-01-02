@@ -1,4 +1,4 @@
-# Red Team Toolkit v2.2
+# Red Team Toolkit v2.3
 
 Swiss-army-knife payload for IT/OT penetration testing engagements on the WiFi Pineapple Pager.
 
@@ -9,6 +9,8 @@ Swiss-army-knife payload for IT/OT penetration testing engagements on the WiFi P
 - Service identification and banner grabbing
 - OT device fingerprinting (MAC OUI, port-based classification)
 - Active Directory enumeration (users, groups, computers, BloodHound)
+- SMB enumeration (shares, users, sessions, null session, signing)
+- Web scanning (directory brute, tech detection, security headers, vulnerabilities)
 - Asset inventory aggregation
 
 ### OT Protocol Attacks (8 protocols)
@@ -48,6 +50,11 @@ Swiss-army-knife payload for IT/OT penetration testing engagements on the WiFi P
 - RS485 serial monitoring
 - CAN bus monitoring
 - RTL-SDR
+
+### Automation
+- Attack chains (full recon, credential harvest, OT assessment, network pivot)
+- Custom chain builder
+- Event-based notifications (Slack, Discord, Telegram, webhook, email)
 
 ### Reporting
 - Engagement timeline generation
@@ -98,18 +105,22 @@ red-team-toolkit/
 │   ├── common.sh           # Shared helpers
 │   ├── menu.sh             # Menu system
 │   └── modules/
-│       ├── discovery/      # Network scanning (5 modules)
+│       ├── discovery/      # Network scanning (7 modules)
 │       ├── ot-protocols/   # ICS protocol attacks (8 modules)
 │       ├── credentials/    # Credential harvesting (7 modules)
 │       ├── network/        # Network attacks (3 modules)
 │       ├── wireless/       # WiFi attacks (6 modules)
 │       ├── physical/       # Serial, CAN, SDR (3 modules)
+│       ├── automation/     # Attack chains & notifications (2 modules)
 │       ├── reporting/      # Timeline and export (2 modules)
 │       └── laptop/         # SSH wrappers
 ├── wordlists/
 │   ├── ot-defaults.csv     # 39 vendor default creds
 │   ├── snmp-communities.txt # 25 community strings
-│   └── ics-oui.txt         # 27 ICS vendor MACs
+│   ├── ics-oui.txt         # 27 ICS vendor MACs
+│   ├── web-common.txt      # 100 common web paths
+│   ├── usernames.txt       # 100 common usernames
+│   └── passwords.txt       # 100 common passwords
 └── artifacts/              # Scan outputs
 ```
 
@@ -155,21 +166,24 @@ All outputs saved to `artifacts/<engagement_name>/`:
 | `mitm_*.pcap` | MITM traffic captures |
 | `timeline.txt` | Engagement timeline |
 | `executive_summary.txt` | Executive report |
+| `chain_*.log` | Attack chain logs |
+| `notifications.log` | Sent notifications |
 | `*.pcap` | Packet captures |
 
 ## Module Count
 
 | Category | Modules |
 |----------|---------|
-| Discovery | 5 |
+| Discovery | 7 |
 | OT Protocols | 8 |
 | Credentials | 7 |
 | Network | 3 |
 | Wireless | 6 |
 | Physical | 3 |
+| Automation | 2 |
 | Reporting | 2 |
 | Laptop | 1 |
-| **Total** | **35** |
+| **Total** | **39** |
 
 ## Requirements
 

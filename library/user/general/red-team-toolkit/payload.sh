@@ -1,8 +1,8 @@
 #!/bin/bash
-# Title: Red Team Toolkit v2.0
+# Title: Red Team Toolkit v2.3
 # Description: Swiss-army-knife payload for IT/OT penetration testing
 # Author: YourTeam
-# Version: 2.2
+# Version: 2.3
 # Category: general
 # Net Mode: NAT
 #
@@ -27,7 +27,7 @@ source "$DIR/scripts/modules/laptop/ssh_exec.sh"
 ensure_dir "$ARTIFACT_DIR" "$LOG_DIR"
 
 # Source module files
-for module_dir in discovery ot-protocols credentials wireless physical laptop reporting network; do
+for module_dir in discovery ot-protocols credentials wireless physical laptop reporting network automation; do
   if [[ -d "$DIR/scripts/modules/$module_dir" ]]; then
     for f in "$DIR/scripts/modules/$module_dir"/*.sh; do
       [[ -f "$f" ]] && source "$f"
@@ -46,6 +46,8 @@ menu_discovery() {
       "Service Identification" \
       "OT Device Fingerprint" \
       "Active Directory Enum" \
+      "SMB Enumeration" \
+      "Web Scanning" \
       "View Asset Inventory")
     
     case "$choice" in
@@ -54,7 +56,9 @@ menu_discovery() {
       3) have rt_service_id && rt_service_id || LOG red "Module not implemented" ;;
       4) have rt_ot_fingerprint && rt_ot_fingerprint || LOG red "Module not implemented" ;;
       5) have rt_ad_enum && rt_ad_enum || LOG red "Module not implemented" ;;
-      6) have rt_asset_inventory && rt_asset_inventory || LOG red "Module not implemented" ;;
+      6) have smb_enum_menu && smb_enum_menu || LOG red "Module not implemented" ;;
+      7) have web_scan_menu && web_scan_menu || LOG red "Module not implemented" ;;
+      8) have rt_asset_inventory && rt_asset_inventory || LOG red "Module not implemented" ;;
       0|"") return ;;
     esac
     
@@ -332,18 +336,20 @@ menu_reporting() {
 }
 
 main_menu() {
-  LOG green "Red Team Toolkit v2.2 loaded"
+  LOG green "Red Team Toolkit v2.3 loaded"
   LOG "Artifacts: $ARTIFACT_DIR"
   
   while true; do
     local choice
-    choice=$(menu_pick "RED TEAM TOOLKIT v2.2" \
+    choice=$(menu_pick "RED TEAM TOOLKIT v2.3" \
       "Discovery & Mapping" \
       "OT Protocol Attacks" \
       "Credential Harvesting" \
       "Network Attacks" \
       "Wireless Attacks" \
       "Physical/Serial" \
+      "Attack Chains" \
+      "Notifications" \
       "Laptop Tools" \
       "Reporting" \
       "---" \
@@ -356,10 +362,12 @@ main_menu() {
       4) menu_network ;;
       5) menu_wireless ;;
       6) menu_physical ;;
-      7) menu_laptop ;;
-      8) menu_reporting ;;
-      9) ;;
-      10) menu_configure ;;
+      7) have attack_chains_menu && attack_chains_menu || LOG red "Module error" ;;
+      8) have notify_menu && notify_menu || LOG red "Module error" ;;
+      9) menu_laptop ;;
+      10) menu_reporting ;;
+      11) ;;
+      12) menu_configure ;;
       0|"")
         LOG "Exiting toolkit"
         exit 0
