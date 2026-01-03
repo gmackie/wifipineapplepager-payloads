@@ -4,13 +4,11 @@
 # Description: Downloads and overwrites payloads from a specific GitHub Pull Request
 # Version: 1.1
 
-# === CONFIGURATION ===
 GH_ORG="hak5"
 GH_REPO="wifipineapplepager-payloads"
 TARGET_DIR="/mmc/root/payloads"
 TEMP_DIR="/tmp/pager_pr_update"
 
-# === STATE ===
 PR_NUMBER=""
 PR_TITLE=""
 PR_AUTHOR=""
@@ -20,8 +18,6 @@ COUNT_UPDATED=0
 LOG_BUFFER=""
 PENDING_UPDATE_PATH=""
 SKIP_REVIEW=false
-
-# === UTILITIES ===
 
 cleanup() {
     rm -rf "$TEMP_DIR"
@@ -301,7 +297,6 @@ finish() {
     LED FINISH
 }
 
-# === MAIN ===
 while true; do
     setup && download_pr && process_payloads && { finish; break; }
 done
