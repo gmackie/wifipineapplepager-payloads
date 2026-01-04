@@ -1,8 +1,8 @@
 #!/bin/bash
-# Title: Red Team Toolkit v2.3
+# Title: Red Team Toolkit v2.4
 # Description: Swiss-army-knife payload for IT/OT penetration testing
 # Author: YourTeam
-# Version: 2.3
+# Version: 2.4
 # Category: general
 # Net Mode: NAT
 #
@@ -336,17 +336,18 @@ menu_reporting() {
 }
 
 main_menu() {
-  LOG green "Red Team Toolkit v2.3 loaded"
+  LOG green "Red Team Toolkit v2.4 loaded"
   LOG "Artifacts: $ARTIFACT_DIR"
   
   while true; do
     local choice
-    choice=$(menu_pick "RED TEAM TOOLKIT v2.3" \
+    choice=$(menu_pick "RED TEAM TOOLKIT v2.4" \
       "Discovery & Mapping" \
       "OT Protocol Attacks" \
       "Credential Harvesting" \
       "Network Attacks" \
       "Wireless Attacks" \
+      "Passive Recon Monitors" \
       "Physical/Serial" \
       "Attack Chains" \
       "Notifications" \
@@ -361,13 +362,14 @@ main_menu() {
       3) menu_credentials ;;
       4) menu_network ;;
       5) menu_wireless ;;
-      6) menu_physical ;;
-      7) have attack_chains_menu && attack_chains_menu || LOG red "Module error" ;;
-      8) have notify_menu && notify_menu || LOG red "Module error" ;;
-      9) menu_laptop ;;
-      10) menu_reporting ;;
-      11) ;;
-      12) menu_configure ;;
+      6) have rt_recon_menu && rt_recon_menu || LOG red "Recon module not loaded" ;;
+      7) menu_physical ;;
+      8) have attack_chains_menu && attack_chains_menu || LOG red "Module error" ;;
+      9) have notify_menu && notify_menu || LOG red "Module error" ;;
+      10) menu_laptop ;;
+      11) menu_reporting ;;
+      12) ;;
+      13) menu_configure ;;
       0|"")
         LOG "Exiting toolkit"
         exit 0
