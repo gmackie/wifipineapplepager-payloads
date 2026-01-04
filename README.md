@@ -8,7 +8,25 @@ This repository contains payloads, themes and ringtones for the Hak5 WiFi Pineap
 
 **Payloads here are written in official DuckyScript™ + Bash specifically for the WiFi Pineapple Pager. Hak5 does NOT guarantee payload functionality.** <a href="#legal"><b>See Legal and Disclaimers</b></a>
 
+---
 
+## Fork Additions
+
+This fork includes **60+ additional payloads** for red team operations, wireless reconnaissance, and RF monitoring.
+
+| Category | Payloads | Description |
+|----------|----------|-------------|
+| Red Team Toolkit | 39+ modules | OT/ICS protocols, credential attacks, network pivoting |
+| Reconnaissance | 11 payloads | Passive WiFi monitoring, posture auditing |
+| Alert-Triggered | 4 payloads | Auto-respond to handshakes, deauths, connections |
+| Exfiltration | 4 payloads | DNS tunneling, steganography, staged transfer |
+| Interception | 4 payloads | MITM setup, packet capture, credential harvesting |
+| SDR/RF | 2 payloads | RTL-SDR baseline monitoring, POCSAG decoding |
+| Utilities | 2 payloads | Dependency checker, evidence packager |
+
+**[View Complete Payload Catalog](docs/updated-payloads.md)** - Includes usage guides, workflows, and compatibility matrix.
+
+---
 
 <div align="center">
 <img src="https://img.shields.io/github/forks/hak5/wifipineapplepager-payloads?style=for-the-badge"/>
