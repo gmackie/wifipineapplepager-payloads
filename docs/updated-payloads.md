@@ -16,7 +16,7 @@ This document catalogs all payloads added to this fork beyond the upstream Hak5 
 | Exfiltration | 4 | Active |
 | Interception | 4 | Active |
 | Utilities | 2 | Passive |
-| SDR/RF | 2 | Passive |
+| SDR/RF | 3 | Passive |
 | Red Team Toolkit | 39+ modules | Mixed |
 
 ---
@@ -58,6 +58,7 @@ This document catalogs all payloads added to this fork beyond the upstream Hak5 
 | **SDR/RF** |
 | RF Baseline Alert | `general/rf-baseline-alert/` | User | Recon | Passive | rtl_power |
 | POCSAG Monitor | `general/pocsag-monitor/` | User | Recon | Passive | rtl_fm, multimon-ng |
+| LoRa Sniffer | `general/lora-sniffer/` | User | Recon | Passive | rtl_433/rtl_power |
 
 ---
 
@@ -199,6 +200,24 @@ Passive pager/POCSAG signal monitoring:
 - Activity detection mode
 
 **Legal Notice**: POCSAG interception may be regulated in your jurisdiction.
+
+---
+
+#### LoRa Sniffer
+**Path**: `library/user/general/lora-sniffer/`  
+**Risk**: Passive  
+**Dependencies**: rtl_433 (preferred) or rtl_power (fallback), RTL-SDR dongle
+
+Passive ISM band protocol monitoring:
+- Uses rtl_433 for known protocol decoding (315/433/868/915 MHz)
+- Falls back to rtl_power spectrum analysis if rtl_433 unavailable
+- Decodes 200+ device protocols (weather stations, tire sensors, remotes, etc.)
+- Tracks unique device IDs across monitoring session
+- Generates summary report with device counts and signal stats
+
+**Bands Supported**: 915 MHz (US LoRa), 868 MHz (EU), 433 MHz, 315 MHz
+
+**Artifacts**: `/tmp/lora-sniffer/` (raw logs, device inventory, spectrum data)
 
 ---
 
