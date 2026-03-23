@@ -3,3 +3,6 @@
 session-ses_*.md
 __pycache__/
 *.pyc
+
+# Datasheets (large vendor PDFs - download URLs in datasheets/README.md)
+firmware/ics-probe/datasheets/*.pdf
