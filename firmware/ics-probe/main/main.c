@@ -27,7 +27,7 @@ static const char* TAG = "ics-probe";
 #define FIRMWARE_VERSION "1.0.0"
 
 // Global stop flag — set by a "stop" command to abort streaming operations
-volatile bool g_stop_flag = false;
+volatile bool g_stop_requested = false;
 
 // -----------------------------------------------------------------------
 // USB CDC helpers
@@ -188,7 +188,7 @@ static cJSON* dispatch(const char* json_str)
 
     // "stop" — abort any running streaming operation
     if (strcmp(cmd, "stop") == 0) {
-        g_stop_flag = true;
+        g_stop_requested = true;
         log_entry("info", "stop flag set");
         cJSON* resp = make_ok(id);
         cJSON_Delete(root);
@@ -385,7 +385,7 @@ void app_main(void)
         s_line_ready = false;
 
         // Clear stop flag at the start of each new command cycle
-        g_stop_flag = false;
+        g_stop_requested = false;
 
         ESP_LOGI(TAG, "RX: %s", line);
         log_entry("info", line);

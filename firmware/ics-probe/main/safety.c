@@ -14,7 +14,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
-#include "esp_brownout.h"
+#include "esp_system.h"
 #include "tinyusb.h"
 #include "tusb_cdc_acm.h"
 #include "cJSON.h"
@@ -71,23 +71,16 @@ void safety_init(void)
     s_rate_count = 0;
 
     /*
-     * Register the brownout callback.  esp_brownout_init() must have
-     * been called by the IDF startup code before app_main(); we only
-     * need to attach our callback.
-     *
-     * esp_register_shutdown_handler() runs handlers in LIFO order during
-     * a normal shutdown path, but is NOT called on a brownout reset.
-     * Instead we use the dedicated brownout detector API available in
-     * ESP-IDF ≥ 5.0 for the ESP32-S3.
+     * Register shutdown handler for best-effort brownout notification.
+     * The brownout detector itself is configured via sdkconfig (Kconfig).
+     * When brownout triggers a reset, the shutdown handler chain runs
+     * and we try to push a JSON error over CDC before the chip resets.
      */
-    esp_brownout_config_t bd_cfg = {
-        .brownout_handler = brownout_handler,
-    };
-    esp_err_t err = esp_brownout_init(&bd_cfg);
+    esp_err_t err = esp_register_shutdown_handler(brownout_handler);
     if (err != ESP_OK) {
-        ESP_LOGW(TAG, "brownout detector init failed: %s", esp_err_to_name(err));
+        ESP_LOGW(TAG, "shutdown handler registration failed: %s", esp_err_to_name(err));
     } else {
-        ESP_LOGI(TAG, "brownout detector registered");
+        ESP_LOGI(TAG, "shutdown handler registered (brownout notification)");
     }
 }
 

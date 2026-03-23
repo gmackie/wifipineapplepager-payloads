@@ -16,8 +16,9 @@ idf_component_register(
         esp_timer
         esp_adc
         json
-        nimble
         spi_flash
-        tinyusb
+        esp_tinyusb
         esp_system
+        bt
+        nvs_flash
 )
