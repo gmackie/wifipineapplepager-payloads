@@ -130,13 +130,14 @@ bool safety_rate_limit(const char* handler_name)
         }
     }
 
-    // New handler — add to table if there is room
+    // New handler — add to table, always allow first call
     if (s_rate_count < MAX_TRACKED_HANDLERS) {
         strncpy(s_rate_table[s_rate_count].name, handler_name,
                 sizeof(s_rate_table[s_rate_count].name) - 1);
         s_rate_table[s_rate_count].name[sizeof(s_rate_table[s_rate_count].name) - 1] = '\0';
         s_rate_table[s_rate_count].last_cmd_ms = now_ms;
         s_rate_count++;
+        ESP_LOGI(TAG, "rate limit: registered handler '%s' (first call allowed)", handler_name);
     } else {
         // Table full — allow the command but log a warning
         ESP_LOGW(TAG, "rate limit table full, allowing '%s' unchecked",

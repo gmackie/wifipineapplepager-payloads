@@ -264,7 +264,7 @@ void app_main(void)
     // serial_init();   // MAX3232
     // can_init();      // MCP2515 + SN65HVD230
     // adc_init();      // INA219
-    // ble_init();      // Needs separate task with large stack (8K+)
+    ble_init();         // On-chip BLE radio (8K main stack required)
 
     log_entry("info", "all handlers initialised");
 
@@ -313,7 +313,15 @@ void app_main(void)
                         g_stop_requested = false;
 
                         cJSON* response = dispatch(rx_buf);
-                        usj_send_json(response);
+                        esp_task_wdt_reset();
+
+                        char* resp_str = cJSON_PrintUnformatted(response);
+                        if (resp_str) {
+                            ESP_LOGI(TAG, "TX: %.200s", resp_str);
+                            usj_send(resp_str);
+                            cJSON_free(resp_str);
+                        }
+                        cJSON_Delete(response);
 
                         rx_len = 0;
                     }

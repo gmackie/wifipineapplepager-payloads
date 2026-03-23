@@ -388,10 +388,7 @@ cJSON *ble_handle_command(const char *action, cJSON *params)
     if (!s_initialized) {
         return cJSON_CreateString("error: BLE handler not initialized");
     }
-    if (!safety_rate_limit("ble")) {
-        return cJSON_CreateString("error: rate limit exceeded");
-    }
-
+    // Rate limiting is handled by dispatch() in main.c — don't double-check here
     if (strcmp(action, "scan") == 0) return action_scan(params);
 
     cJSON *err = cJSON_CreateObject();
