@@ -25,6 +25,7 @@
 #include "handlers.h"
 
 static const char *TAG = "serial";
+static bool s_initialized = false;
 
 #define SERIAL_UART         UART_NUM_2
 #define SERIAL_BUF_SIZE     SERIAL_BUFFER_SIZE   /* from config.h */
@@ -92,6 +93,7 @@ void serial_init(void)
     s_current_baud = RS232_BAUD_DEFAULT;
     ESP_LOGI(TAG, "RS-232 initialised on UART%d (%d baud)",
              SERIAL_UART, RS232_BAUD_DEFAULT);
+    s_initialized = true;
 }
 
 /* -------------------------------------------------------------------------
@@ -391,14 +393,16 @@ static cJSON *serial_auto_baud(void)
 /* -------------------------------------------------------------------------
  * Public command dispatcher
  * ------------------------------------------------------------------------- */
+bool serial_is_ready(void) { return s_initialized; }
+
 cJSON *serial_handle_command(const char *action, cJSON *params)
 {
     if (!action) {
         return serial_error("action is required");
     }
 
-    if (!safety_rate_limit("serial")) {
-        return serial_error("Rate limit exceeded — wait before sending another command");
+    if (!s_initialized) {
+        return serial_error("RS-232 handler not initialized (no MAX3232 hardware?)");
     }
 
     if (strcmp(action, "send") == 0) {

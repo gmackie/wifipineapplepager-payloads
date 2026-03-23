@@ -306,7 +306,11 @@ void can_init(void)
         .quadhd_io_num = -1,
         .max_transfer_sz = 32,
     };
-    ESP_ERROR_CHECK(spi_bus_initialize(SPI2_HOST, &bus_cfg, SPI_DMA_CH_AUTO));
+    esp_err_t err = spi_bus_initialize(SPI2_HOST, &bus_cfg, SPI_DMA_CH_AUTO);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "SPI bus init failed: %s (no CAN hardware?)", esp_err_to_name(err));
+        return;
+    }
 
     // MCP2515 device: max 10 MHz SPI clock, mode 0,0
     spi_device_interface_config_t dev_cfg = {
@@ -315,7 +319,12 @@ void can_init(void)
         .spics_io_num   = CAN_SPI_CS,
         .queue_size     = 4,
     };
-    ESP_ERROR_CHECK(spi_bus_add_device(SPI2_HOST, &dev_cfg, &s_spi));
+    err = spi_bus_add_device(SPI2_HOST, &dev_cfg, &s_spi);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "SPI device add failed: %s (no CAN hardware?)", esp_err_to_name(err));
+        spi_bus_free(SPI2_HOST);
+        return;
+    }
 
     // CAN_INT_PIN as input (active-low interrupt from MCP2515)
     gpio_config_t int_cfg = {
@@ -325,10 +334,28 @@ void can_init(void)
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
         .intr_type    = GPIO_INTR_DISABLE,
     };
-    ESP_ERROR_CHECK(gpio_config(&int_cfg));
+    err = gpio_config(&int_cfg);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "GPIO config failed: %s (no CAN hardware?)", esp_err_to_name(err));
+        spi_bus_remove_device(s_spi);
+        s_spi = NULL;
+        spi_bus_free(SPI2_HOST);
+        return;
+    }
 
     // MCP2515 init sequence
     mcp_reset();
+
+    // Probe: read CANSTAT register — should be 0x80 (config mode after reset)
+    uint8_t canstat = mcp_read_reg(MCP_CANSTAT);
+    if ((canstat & MCP_MODE_MASK) != MCP_MODE_CONFIG) {
+        ESP_LOGW(TAG, "MCP2515 not detected (CANSTAT=0x%02X, expected config mode)", canstat);
+        spi_bus_remove_device(s_spi);
+        s_spi = NULL;
+        spi_bus_free(SPI2_HOST);
+        return;
+    }
+    ESP_LOGI(TAG, "MCP2515 detected (CANSTAT=0x%02X)", canstat);
 
     if (!mcp_set_mode(MCP_MODE_CONFIG)) {
         ESP_LOGE(TAG, "failed to enter config mode");
@@ -592,15 +619,13 @@ static cJSON *action_scan_ids(cJSON *params)
 
 // ─── Public command dispatcher ───────────────────────────────────────────────
 
+bool can_is_ready(void) { return s_initialized; }
+
 cJSON *can_handle_command(const char *action, cJSON *params)
 {
     if (!s_initialized) {
         return cJSON_CreateString("error: CAN handler not initialized");
     }
-    if (!safety_rate_limit("can")) {
-        return cJSON_CreateString("error: rate limit exceeded");
-    }
-
     if (strcmp(action, "listen") == 0)   return action_listen(params);
     if (strcmp(action, "send") == 0)     return action_send(params);
     if (strcmp(action, "scan_ids") == 0) return action_scan_ids(params);

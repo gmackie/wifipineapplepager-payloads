@@ -90,12 +90,22 @@ static cJSON* handle_probe_info(const char* id)
     cJSON* resp = make_ok(id);
     cJSON_AddStringToObject(resp, "fw_version", FIRMWARE_VERSION);
 
+    // Report all capabilities with their ready status
+    cJSON* hw = cJSON_CreateObject();
+    cJSON_AddBoolToObject(hw, "modbus", modbus_is_ready());
+    cJSON_AddBoolToObject(hw, "serial", serial_is_ready());
+    cJSON_AddBoolToObject(hw, "can",    can_is_ready());
+    cJSON_AddBoolToObject(hw, "adc",    adc_is_ready());
+    cJSON_AddBoolToObject(hw, "ble",    ble_is_ready());
+    cJSON_AddItemToObject(resp, "hardware", hw);
+
+    // List only ready capabilities for backward compat
     cJSON* caps = cJSON_CreateArray();
-    cJSON_AddItemToArray(caps, cJSON_CreateString("modbus"));
-    cJSON_AddItemToArray(caps, cJSON_CreateString("serial"));
-    cJSON_AddItemToArray(caps, cJSON_CreateString("can"));
-    cJSON_AddItemToArray(caps, cJSON_CreateString("adc"));
-    cJSON_AddItemToArray(caps, cJSON_CreateString("ble"));
+    if (modbus_is_ready()) cJSON_AddItemToArray(caps, cJSON_CreateString("modbus"));
+    if (serial_is_ready()) cJSON_AddItemToArray(caps, cJSON_CreateString("serial"));
+    if (can_is_ready())    cJSON_AddItemToArray(caps, cJSON_CreateString("can"));
+    if (adc_is_ready())    cJSON_AddItemToArray(caps, cJSON_CreateString("adc"));
+    if (ble_is_ready())    cJSON_AddItemToArray(caps, cJSON_CreateString("ble"));
     cJSON_AddItemToArray(caps, cJSON_CreateString("log"));
     cJSON_AddItemToObject(resp, "capabilities", caps);
 
@@ -259,12 +269,12 @@ void app_main(void)
     // Peripheral inits disabled until hardware is wired up.
     // Each crashes in esp_intr_alloc when the physical IC isn't connected.
     // Uncomment one at a time as you add peripherals:
-    // Peripheral inits — uncomment as hardware is wired:
-    // modbus_init();   // MAX3485 + RS-485
-    // serial_init();   // MAX3232
-    // can_init();      // MCP2515 + SN65HVD230
-    // adc_init();      // INA219
-    ble_init();         // On-chip BLE radio (8K main stack required)
+    // All peripheral inits — each gracefully detects if hardware is present
+    modbus_init();
+    serial_init();
+    can_init();
+    adc_init();
+    ble_init();
 
     log_entry("info", "all handlers initialised");
 

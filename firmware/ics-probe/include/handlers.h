@@ -13,22 +13,27 @@ typedef enum {
 
 // --- Modbus Handler ---
 void modbus_init(void);
+bool modbus_is_ready(void);
 cJSON* modbus_handle_command(const char* action, cJSON* params);
 
 // --- Serial Handler ---
 void serial_init(void);
+bool serial_is_ready(void);
 cJSON* serial_handle_command(const char* action, cJSON* params);
 
 // --- CAN Handler ---
 void can_init(void);
+bool can_is_ready(void);
 cJSON* can_handle_command(const char* action, cJSON* params);
 
 // --- ADC Handler ---
 void adc_init(void);
+bool adc_is_ready(void);
 cJSON* adc_handle_command(const char* action, cJSON* params);
 
 // --- BLE Scanner ---
 void ble_init(void);
+bool ble_is_ready(void);
 cJSON* ble_handle_command(const char* action, cJSON* params);
 
 // --- Safety ---

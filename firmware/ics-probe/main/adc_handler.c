@@ -138,11 +138,29 @@ void adc_init(void)
         .scl_pullup_en    = GPIO_PULLUP_ENABLE,
         .master.clk_speed = 100000,  // 100 kHz standard mode
     };
-    ESP_ERROR_CHECK(i2c_param_config(I2C_PORT, &conf));
-    ESP_ERROR_CHECK(i2c_driver_install(I2C_PORT, I2C_MODE_MASTER, 0, 0, 0));
+    esp_err_t err = i2c_param_config(I2C_PORT, &conf);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "I2C config failed: %s", esp_err_to_name(err));
+        return;
+    }
+    err = i2c_driver_install(I2C_PORT, I2C_MODE_MASTER, 0, 0, 0);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "I2C driver install failed: %s", esp_err_to_name(err));
+        return;
+    }
+
+    // Probe: try to read config register — if INA219 is present, we get 0x399F (default)
+    int16_t probe_val = 0;
+    err = ina219_read_reg(INA219_REG_CONFIG, &probe_val);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "INA219 not detected at 0x%02X (no hardware?)", INA219_ADDR);
+        i2c_driver_delete(I2C_PORT);
+        return;
+    }
+    ESP_LOGI(TAG, "INA219 detected (config reg=0x%04X)", (uint16_t)probe_val);
 
     // INA219 configuration register
-    esp_err_t err = ina219_write_reg(INA219_REG_CONFIG, INA219_CONFIG_VAL);
+    err = ina219_write_reg(INA219_REG_CONFIG, INA219_CONFIG_VAL);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "INA219 config write failed: %s", esp_err_to_name(err));
         return;
@@ -276,15 +294,13 @@ static cJSON *action_stream(cJSON *params)
 
 // ─── Public command dispatcher ───────────────────────────────────────────────
 
+bool adc_is_ready(void) { return s_initialized; }
+
 cJSON *adc_handle_command(const char *action, cJSON *params)
 {
     if (!s_initialized) {
         return cJSON_CreateString("error: ADC handler not initialized");
     }
-    if (!safety_rate_limit("adc")) {
-        return cJSON_CreateString("error: rate limit exceeded");
-    }
-
     if (strcmp(action, "read")   == 0) return action_read(params);
     if (strcmp(action, "stream") == 0) return action_stream(params);
 

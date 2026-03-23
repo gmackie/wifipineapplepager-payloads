@@ -383,6 +383,8 @@ static cJSON *action_scan(cJSON *params)
 
 // ─── Public command dispatcher ───────────────────────────────────────────────
 
+bool ble_is_ready(void) { return s_initialized; }
+
 cJSON *ble_handle_command(const char *action, cJSON *params)
 {
     if (!s_initialized) {

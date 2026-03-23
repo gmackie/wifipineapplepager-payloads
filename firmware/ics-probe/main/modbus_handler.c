@@ -26,6 +26,7 @@
 #include "handlers.h"
 
 static const char *TAG = "modbus";
+static bool s_initialized = false;
 
 #define MODBUS_UART         UART_NUM_1
 #define MODBUS_BUF_SIZE     256
@@ -125,6 +126,7 @@ void modbus_init(void)
 
     ESP_LOGI(TAG, "Modbus RTU initialised on UART%d (%d baud)",
              MODBUS_UART, RS485_BAUD_DEFAULT);
+    s_initialized = true;
 }
 
 /* -------------------------------------------------------------------------
@@ -581,14 +583,16 @@ static cJSON *modbus_device_id(cJSON *params)
 /* -------------------------------------------------------------------------
  * Public command dispatcher
  * ------------------------------------------------------------------------- */
+bool modbus_is_ready(void) { return s_initialized; }
+
 cJSON *modbus_handle_command(const char *action, cJSON *params)
 {
     if (!action || !params) {
         return modbus_error("action and params are required");
     }
 
-    if (!safety_rate_limit("modbus")) {
-        return modbus_error("Rate limit exceeded — wait before sending another command");
+    if (!s_initialized) {
+        return modbus_error("Modbus handler not initialized (no RS-485 hardware?)");
     }
 
     if (strcmp(action, "read_holding") == 0) {
