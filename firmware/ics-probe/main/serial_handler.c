@@ -70,14 +70,24 @@ void serial_init(void)
         .flow_ctrl  = UART_HW_FLOWCTRL_DISABLE,
         .source_clk = UART_SCLK_DEFAULT,
     };
-    ESP_ERROR_CHECK(uart_driver_install(SERIAL_UART,
-                                        SERIAL_BUF_SIZE * 2,
-                                        SERIAL_BUF_SIZE * 2,
-                                        0, NULL, 0));
-    ESP_ERROR_CHECK(uart_param_config(SERIAL_UART, &uart_cfg));
-    ESP_ERROR_CHECK(uart_set_pin(SERIAL_UART,
-                                 RS232_TX_PIN, RS232_RX_PIN,
-                                 UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+    esp_err_t err;
+    err = uart_param_config(SERIAL_UART, &uart_cfg);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "RS-232 param config failed: %s (no hardware?)", esp_err_to_name(err));
+        return;
+    }
+    err = uart_set_pin(SERIAL_UART, RS232_TX_PIN, RS232_RX_PIN,
+                       UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "RS-232 set_pin failed: %s", esp_err_to_name(err));
+        return;
+    }
+    err = uart_driver_install(SERIAL_UART, SERIAL_BUF_SIZE * 2,
+                              SERIAL_BUF_SIZE * 2, 0, NULL, 0);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "RS-232 driver install failed: %s", esp_err_to_name(err));
+        return;
+    }
 
     s_current_baud = RS232_BAUD_DEFAULT;
     ESP_LOGI(TAG, "RS-232 initialised on UART%d (%d baud)",

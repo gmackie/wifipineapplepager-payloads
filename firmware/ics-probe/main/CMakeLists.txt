@@ -17,7 +17,7 @@ idf_component_register(
         esp_adc
         json
         spi_flash
-        esp_tinyusb
+        usb
         esp_system
         bt
         nvs_flash

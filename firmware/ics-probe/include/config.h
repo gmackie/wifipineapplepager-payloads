@@ -9,8 +9,9 @@
 #define RS485_BAUD_DEFAULT  9600
 
 // RS-232 (Legacy SCADA) - UART2
-#define RS232_TX_PIN        19
-#define RS232_RX_PIN        20
+// NOTE: GPIO 19/20 are USB D-/D+ on S3 — cannot use when USB is active
+#define RS232_TX_PIN        15
+#define RS232_RX_PIN        16
 #define RS232_BAUD_DEFAULT  9600
 
 // CAN Bus - SPI (MCP2515)

@@ -103,16 +103,25 @@ void modbus_init(void)
         .flow_ctrl  = UART_HW_FLOWCTRL_DISABLE,
         .source_clk = UART_SCLK_DEFAULT,
     };
-    ESP_ERROR_CHECK(uart_driver_install(MODBUS_UART,
-                                        MODBUS_BUF_SIZE * 2,
-                                        MODBUS_BUF_SIZE * 2,
-                                        0, NULL, 0));
-    ESP_ERROR_CHECK(uart_param_config(MODBUS_UART, &uart_cfg));
-    ESP_ERROR_CHECK(uart_set_pin(MODBUS_UART,
-                                 RS485_TX_PIN, RS485_RX_PIN,
-                                 UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
-    /* Enable RS-485 half-duplex mode in the UART hardware */
-    ESP_ERROR_CHECK(uart_set_mode(MODBUS_UART, UART_MODE_RS485_HALF_DUPLEX));
+    esp_err_t err;
+    err = uart_param_config(MODBUS_UART, &uart_cfg);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "Modbus UART config failed: %s", esp_err_to_name(err));
+        return;
+    }
+    err = uart_set_pin(MODBUS_UART, RS485_TX_PIN, RS485_RX_PIN,
+                       UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "Modbus set_pin failed: %s", esp_err_to_name(err));
+        return;
+    }
+    err = uart_driver_install(MODBUS_UART, MODBUS_BUF_SIZE * 2,
+                              MODBUS_BUF_SIZE * 2, 0, NULL, 0);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "Modbus driver install failed: %s", esp_err_to_name(err));
+        return;
+    }
+    uart_set_mode(MODBUS_UART, UART_MODE_RS485_HALF_DUPLEX);
 
     ESP_LOGI(TAG, "Modbus RTU initialised on UART%d (%d baud)",
              MODBUS_UART, RS485_BAUD_DEFAULT);

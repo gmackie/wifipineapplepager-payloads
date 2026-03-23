@@ -15,8 +15,7 @@
 #include "freertos/task.h"
 #include "esp_log.h"
 #include "esp_system.h"
-#include "tinyusb.h"
-#include "tusb_cdc_acm.h"
+#include "driver/usb_serial_jtag.h"
 #include "cJSON.h"
 
 #include "config.h"
@@ -54,11 +53,8 @@ static int          s_rate_count = 0;
 static void brownout_handler(void)
 {
     const char* msg = "{\"status\":\"error\",\"error\":\"brownout\"}\n";
-    tinyusb_cdcacm_write_queue(TINYUSB_CDC_ACM_0,
-                               (const uint8_t*)msg,
-                               strlen(msg));
-    // Best-effort flush — ignore return value in ISR context
-    tinyusb_cdcacm_write_flush(TINYUSB_CDC_ACM_0, 0);
+    // Best-effort write via USB Serial/JTAG — may not complete before reset
+    usb_serial_jtag_write_bytes(msg, strlen(msg), 0);
 }
 
 // -----------------------------------------------------------------------
