@@ -1,0 +1,23 @@
+idf_component_register(
+    SRCS
+        "main.c"
+        "modbus_handler.c"
+        "serial_handler.c"
+        "can_handler.c"
+        "adc_handler.c"
+        "ble_scanner.c"
+        "safety.c"
+        "log.c"
+    INCLUDE_DIRS
+        "."
+        "../include"
+    REQUIRES
+        driver
+        esp_timer
+        esp_adc
+        json
+        nimble
+        spi_flash
+        tinyusb
+        esp_system
+)
