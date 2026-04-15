@@ -116,12 +116,83 @@ bool net_is_ready(void)
     return s_initialized;
 }
 
+// ─── Command implementations ────────────────────────────────────────────────
+
+static cJSON* cmd_status(void)
+{
+    cJSON* resp = cJSON_CreateObject();
+    cJSON_AddStringToObject(resp, "status", "ok");
+    if (!s_initialized) {
+        cJSON_AddBoolToObject(resp, "link", false);
+        cJSON_AddStringToObject(resp, "error", "not_initialized");
+        return resp;
+    }
+    esp_netif_ip_info_t ip;
+    if (esp_netif_get_ip_info(s_eth_netif, &ip) == ESP_OK) {
+        char buf[32];
+        snprintf(buf, sizeof(buf), IPSTR, IP2STR(&ip.ip));
+        cJSON_AddStringToObject(resp, "ip", buf);
+        snprintf(buf, sizeof(buf), IPSTR, IP2STR(&ip.netmask));
+        cJSON_AddStringToObject(resp, "netmask", buf);
+        snprintf(buf, sizeof(buf), IPSTR, IP2STR(&ip.gw));
+        cJSON_AddStringToObject(resp, "gw", buf);
+    }
+    // ESP-IDF v5.1.2 does not expose a PHY link-status ioctl command in
+    // esp_eth_io_cmd_t. Report netif up/down as a proxy for link state —
+    // esp_netif flips the flag via the ETH_EVENT_CONNECTED/DISCONNECTED
+    // events that esp_eth drives internally.
+    bool link_up = esp_netif_is_netif_up(s_eth_netif);
+    cJSON_AddBoolToObject(resp, "link", link_up);
+    return resp;
+}
+
+static cJSON* cmd_dhcp(cJSON* params)
+{
+    cJSON* resp = cJSON_CreateObject();
+    if (!s_initialized) {
+        cJSON_AddStringToObject(resp, "status", "error");
+        cJSON_AddStringToObject(resp, "error", "not_initialized");
+        return resp;
+    }
+    int timeout_s = 10;
+    cJSON* t = cJSON_GetObjectItemCaseSensitive(params, "timeout_s");
+    if (t && cJSON_IsNumber(t)) timeout_s = t->valueint;
+
+    esp_netif_dhcpc_stop(s_eth_netif);
+    esp_netif_dhcpc_start(s_eth_netif);
+
+    // Poll for IP assignment
+    for (int i = 0; i < timeout_s * 10; i++) {
+        esp_netif_ip_info_t ip;
+        if (esp_netif_get_ip_info(s_eth_netif, &ip) == ESP_OK && ip.ip.addr != 0) {
+            cJSON_AddStringToObject(resp, "status", "ok");
+            char buf[32];
+            snprintf(buf, sizeof(buf), IPSTR, IP2STR(&ip.ip));
+            cJSON_AddStringToObject(resp, "ip", buf);
+            return resp;
+        }
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+    cJSON_AddStringToObject(resp, "status", "error");
+    cJSON_AddStringToObject(resp, "error", "dhcp_timeout");
+    return resp;
+}
+
 cJSON* net_handle_command(const char* action, cJSON* params)
 {
-    (void)params;
-    cJSON* resp = cJSON_CreateObject();
-    cJSON_AddStringToObject(resp, "status", "error");
-    cJSON_AddStringToObject(resp, "error", "net_not_implemented");
-    cJSON_AddStringToObject(resp, "action", action ? action : "");
-    return resp;
+    if (!action) {
+        cJSON* r = cJSON_CreateObject();
+        cJSON_AddStringToObject(r, "status", "error");
+        cJSON_AddStringToObject(r, "error", "missing_action");
+        return r;
+    }
+    if (strcmp(action, "selftest") == 0 || strcmp(action, "status") == 0) {
+        return cmd_status();
+    }
+    if (strcmp(action, "dhcp") == 0) return cmd_dhcp(params);
+
+    cJSON* r = cJSON_CreateObject();
+    cJSON_AddStringToObject(r, "status", "error");
+    cJSON_AddStringToObject(r, "error", "unknown_action");
+    return r;
 }
