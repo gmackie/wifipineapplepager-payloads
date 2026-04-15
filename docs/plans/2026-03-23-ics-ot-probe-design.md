@@ -435,6 +435,185 @@ All new ICS payloads include `set -euo pipefail` after the shebang. Input valida
 
 ---
 
+## 2026-04-15 Scope Expansion — v1.1
+
+Reviewed and approved 2026-04-15 following a brainstorming session on industrial
+consulting use cases. Three capabilities added to v1 to support proof-of-concept
+engagements in plant/building environments. Larger "industrial gateway" product
+direction parked in `2026-04-15-industrial-gateway-v2-notes.md` for a future v2.
+
+### Amendment 8: Ethernet Uplink via W5500
+
+**Rationale:** Modbus TCP, BACnet/IP, OPC UA, EtherNet/IP, and MQTT all ride
+on Ethernet. Without a wired NIC on the probe itself, consulting POCs must
+piggyback on the pager's Wi-Fi — unreliable in plant environments with
+shielded buildings and no guest SSIDs.
+
+**Hardware:**
+- **W5500** SPI Ethernet controller (hardware TCP/IP offload, 8 sockets, ~15 Mbps)
+- **HanRun HR911105A** (or equivalent) RJ45 MagJack with integrated magnetics
+- Shares the existing SPI bus with MCP2515. Dedicated CS, INT, RST pins.
+- Powered from existing 3.3V rail. No isolation required on Ethernet pair
+  (MagJack magnetics handle transformer isolation).
+
+**Firmware:** New module `ethernet_handler.cpp`. W5500 driver plus a thin
+socket-API shim. Exposes new commands:
+
+| Command | Description | Example params |
+|---|---|---|
+| `net.dhcp` | Acquire IP via DHCP on Ethernet interface | `{"timeout_s":10}` |
+| `net.static` | Configure static IP | `{"ip":"10.0.0.5","mask":"24","gw":"10.0.0.1"}` |
+| `net.status` | Report link state, IP, gateway, DNS | `{}` |
+| `net.tcp_connect` | Open TCP socket to host:port | `{"host":"10.0.0.10","port":502}` |
+| `net.tcp_send` | Write bytes to open socket | `{"sock":0,"data":"hex"}` |
+| `net.tcp_recv` | Read from socket with timeout | `{"sock":0,"timeout_ms":2000}` |
+| `net.tcp_close` | Close socket | `{"sock":0}` |
+| `net.udp_send` | Send UDP packet (BACnet Who-Is, etc) | `{"host":"...","port":47808,"data":"hex"}` |
+
+**Pager-side library:** Add `esp32_net_*` wrappers to `esp32.sh`. The existing
+`ics_protocols.sh` functions (`modbus_tcp_scan`, `bacnet_whois`, etc) gain an
+**`--interface`** flag that routes traffic through the probe's Ethernet
+instead of the pager's native network when specified. This lets payloads
+target plant networks the pager has no route to.
+
+### Amendment 9: Industrial Digital I/O via MAX14906
+
+**Rationale:** Reading and driving 12V/24V industrial digital signals is
+table-stakes for plant POCs — PLC inputs, proximity switches, stack lights,
+relay contacts, valve position feedback. Reading via resistor dividers is
+possible but lacks fault detection and isn't IEC 61131-2 compliant.
+
+**Hardware:**
+- **MAX14906** 4-channel software-configurable 24V digital I/O, SPI interface
+- Each channel runtime-selectable as **input** (Type 1/2/3 IEC 61131-2) or
+  **output** (high-side switch with current limit, short-circuit protection,
+  open-load detection)
+- Shares the existing SPI bus with MCP2515 and W5500. Dedicated CS + FAULT pins.
+- Sits inside a **new isolated 24V field domain** (see Amendment 11 for the
+  isolation boundary update).
+- Field-side rail: 24V from Phoenix terminal block, protected by TVS + reverse
+  polarity diode.
+
+**Firmware:** New module `dio_handler.cpp`. Commands:
+
+| Command | Description | Example params |
+|---|---|---|
+| `dio.configure` | Set channel direction and mode | `{"ch":0,"mode":"input_t3"}` |
+| `dio.read` | Read all 4 channels | `{}` |
+| `dio.write` | Set output channels | `{"ch":0,"value":1}` |
+| `dio.monitor` | Stream channel changes | `{"interval_ms":100,"duration_s":60}` |
+| `dio.fault_status` | Read MAX14906 fault register | `{}` |
+
+**Pager-side library:** `esp32_dio_configure`, `esp32_dio_read`,
+`esp32_dio_write`, `esp32_dio_monitor`. Write and configure commands gate
+behind `CONFIRMATION_DIALOG` (Level C interaction).
+
+**New payloads** under `library/user/ics/fieldbus/`:
+- `dio-line-monitor/` — passive monitoring of up to 4 digital lines, logs
+  transitions with timestamps
+- `dio-pulse-counter/` — count pulses on a channel (flow meters, tachometers)
+- `dio-output-test/` — drive outputs for relay/valve/stack-light testing
+  (Level C, confirmation-gated)
+
+### Amendment 10: 4–20mA Current Output via AD5420
+
+**Rationale:** Consulting engagements regularly need to **simulate a
+transmitter** to verify PLC/DCS input wiring and scaling, or **drive a loop**
+to prove control output connectivity to valves and actuators. The existing
+INA219 only reads; write capability was a gap.
+
+**Hardware:**
+- **AD5420** 16-bit 4–20mA current-output DAC, SPI interface
+- **Source mode only** (not loop-powered). Draws from the 24V field rail
+  already provisioned for MAX14906 — no new power tree.
+- Built-in fault detection: open loop, short to ground, over-temperature,
+  SPI CRC. Fault output routed to ESP32 GPIO for diagnostics.
+- Sits inside the same isolated 24V field domain as MAX14906.
+- Single SPI CS line, shares bus with MCP2515 / W5500 / MAX14906.
+
+**Firmware:** New module `current_out_handler.cpp`. Commands:
+
+| Command | Description | Example params |
+|---|---|---|
+| `iout.set_ma` | Set loop current (4.00–20.00 mA) | `{"ma":12.00,"confirm":true}` |
+| `iout.ramp` | Ramp from A to B over duration | `{"from_ma":4,"to_ma":20,"duration_s":10,"confirm":true}` |
+| `iout.off` | Open the loop (set to ~0mA / high-Z) | `{}` |
+| `iout.status` | Report current setpoint and fault state | `{}` |
+
+All output commands require `"confirm":true`. Pager-side wrappers prompt
+`CONFIRMATION_DIALOG` before sending.
+
+**New payloads** under `library/user/ics/fieldbus/`:
+- `analog-loop-simulator/` — menu-driven 4-20mA transmitter simulation
+  with engineering unit scaling (e.g., "simulate 0–100 PSI on a 4–20mA loop")
+- `analog-loop-ramp/` — controlled ramp generator for PLC scaling verification
+- `analog-loop-reader/` (existing, unchanged) — still uses the read path
+
+### Amendment 11: Isolation Boundary Revision
+
+Section 2.5 (**Required Galvanic Isolation**) is updated to reflect three
+isolated domains instead of two:
+
+1. **USB/logic domain** — ESP32-S3, W5500, 3.3V rail from USB
+2. **Serial field domain** — MAX3485 (RS485), MAX3232 (RS232) via ADUM1201
+   across UART lines (unchanged from original)
+3. **CAN field domain** — MCP2515/SN65HVD230 with isolated DC-DC for
+   transceiver supply (unchanged from original)
+4. **24V field domain (NEW)** — MAX14906 + AD5420, fed by external 24V
+   from Phoenix terminal block, with **ADUM1401** (or ADUM3151 for more
+   channels) crossing the SPI bus (MOSI, MISO, SCK, two CS lines) between
+   the ESP32 and the 24V-domain chips. Fault/INT lines also isolated.
+
+Ethernet is not a new isolation domain — the RJ45 MagJack's transformer
+provides the required barrier on the twisted pair side, and the W5500
+itself sits in the USB/logic domain.
+
+**BOM impact:** +1 digital isolator, +1 RJ45 MagJack + W5500, +1 MAX14906,
++1 AD5420, +24V input protection circuitry (TVS, reverse diode, polyfuse),
++Phoenix 3-pin terminal (24V+ / 24V- / earth).
+
+### Amendment 12: Payload Collection Additions
+
+Add to Section 6.1:
+
+```
+library/user/ics/
+  network/                      (NEW subcategory — probe-routed Ethernet)
+    probe-ethernet-setup/       # DHCP or static config on probe Ethernet
+    probe-modbus-tcp-scan/      # Modbus TCP scan over probe interface
+    probe-bacnet-whois/         # BACnet/IP Who-Is over probe interface
+    probe-opcua-discover/       # OPC UA FindServers over probe interface
+  fieldbus/
+    dio-line-monitor/           # (see Amendment 9)
+    dio-pulse-counter/          # (see Amendment 9)
+    dio-output-test/            # (see Amendment 9)
+    analog-loop-simulator/      # (see Amendment 10)
+    analog-loop-ramp/           # (see Amendment 10)
+```
+
+v1.1 total: 23 original + 9 new = **32 payloads**.
+
+### Amendment 13: Audit Trail Entries
+
+| # | Phase | Decision | Principle | Rationale | Rejected |
+|---|-------|----------|-----------|-----------|----------|
+| 17 | Brainstorm | Add Ethernet via W5500 to v1 | P1+P3 | Plant networks need wired access; W5500 is zero-risk add | Defer to v2 |
+| 18 | Brainstorm | Add MAX14906 24V DIO to v1 | P1 | Table-stakes for industrial POCs, clean digital-only part | Defer to v2 |
+| 19 | Brainstorm | Add AD5420 4-20mA output to v1 | P1 | 24V rail already on board for MAX14906; simulation unlocks real use cases | AD74413R (±15V rails too invasive for v1) |
+| 20 | Brainstorm | Defer AD74413R to v2 | P3 | ±15V rails and new power tree too much for approved v1 | AD74413R in v1 |
+| 21 | Brainstorm | Defer gateway mode, cellular, IO-Link, HART, sub-GHz, BACnet stack, PoE, thermocouple to v2 | P3 | v1 remains a USB-tethered probe; industrial gateway is a separate product | Big-bang v1 |
+| 22 | Brainstorm | Keep INA219 for read path alongside new AD5420 write path | P6 | Read path already specified and approved; AD5420 handles write-only | Replace INA219 with AD74413R |
+
+### Amendment 14: v2 Product Line Parked
+
+A separate design notes file, `docs/plans/2026-04-15-industrial-gateway-v2-notes.md`,
+captures the larger "industrial consulting gateway" scope surfaced during the
+2026-04-15 brainstorming session. v2 is a distinct product (different MCU,
+standalone gateway mode, cellular, wider protocol support, different
+certifications) and is explicitly **not** in v1 scope. v1 must ship first.
+
+---
+
 ## GSTACK REVIEW REPORT
 
 | Review | Trigger | Why | Runs | Status | Findings |
