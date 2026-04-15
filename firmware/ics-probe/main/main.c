@@ -26,7 +26,7 @@
 
 static const char* TAG = "ics-probe";
 
-#define FIRMWARE_VERSION "1.0.0"
+#define FIRMWARE_VERSION "1.1.0"
 
 // Global stop flag — set by a "stop" command to abort streaming operations
 volatile bool g_stop_requested = false;
