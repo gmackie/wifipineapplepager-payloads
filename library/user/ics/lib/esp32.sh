@@ -195,3 +195,44 @@ probe_selftest() {
 probe_log() {
   esp32_send "probe.log" "{}"
 }
+
+# --- v1.1: Ethernet via W5500 ---
+
+esp32_net_dhcp() {
+  local timeout="${1:-10}"
+  esp32_send "net.dhcp" "$(printf '{"timeout_s":%d}' "$timeout")"
+}
+
+esp32_net_static() {
+  local ip="$1" mask="$2" gw="$3"
+  esp32_send "net.static" "$(printf '{"ip":"%s","mask":"%s","gw":"%s"}' "$ip" "$mask" "$gw")"
+}
+
+esp32_net_status() {
+  esp32_send "net.status" "{}"
+}
+
+esp32_net_tcp_connect() {
+  local host="$1" port="$2"
+  esp32_send "net.tcp_connect" "$(printf '{"host":"%s","port":%d}' "$host" "$port")"
+}
+
+esp32_net_tcp_send() {
+  local sock="$1" hex="$2"
+  esp32_send "net.tcp_send" "$(printf '{"sock":%d,"data":"%s"}' "$sock" "$hex")"
+}
+
+esp32_net_tcp_recv() {
+  local sock="$1" timeout_ms="${2:-2000}"
+  esp32_send "net.tcp_recv" "$(printf '{"sock":%d,"timeout_ms":%d}' "$sock" "$timeout_ms")"
+}
+
+esp32_net_tcp_close() {
+  local sock="$1"
+  esp32_send "net.tcp_close" "$(printf '{"sock":%d}' "$sock")"
+}
+
+esp32_net_udp_send() {
+  local host="$1" port="$2" hex="$3"
+  esp32_send "net.udp_send" "$(printf '{"host":"%s","port":%d,"data":"%s"}' "$host" "$port" "$hex")"
+}
