@@ -96,6 +96,28 @@ static cJSON* cmd_configure(cJSON* params)
     return r;
 }
 
+// ─── Action: read ───────────────────────────────────────────────────────────
+// Returns per-channel state:
+//   {"status":"ok","channels":[{"ch":0,"mode":"input_t3","value":1},...]}
+static cJSON* cmd_read(void)
+{
+    uint8_t mask = 0;
+    if (!max14906_read_inputs(&mask)) return err_obj("spi_failure");
+
+    cJSON* r   = cJSON_CreateObject();
+    cJSON_AddStringToObject(r, "status", "ok");
+    cJSON* arr = cJSON_CreateArray();
+    for (int ch = 0; ch < DIO_CHANNELS; ch++) {
+        cJSON* entry = cJSON_CreateObject();
+        cJSON_AddNumberToObject(entry, "ch", ch);
+        cJSON_AddStringToObject(entry, "mode", mode_to_str(s_ch_mode[ch]));
+        cJSON_AddNumberToObject(entry, "value", (mask >> ch) & 0x01);
+        cJSON_AddItemToArray(arr, entry);
+    }
+    cJSON_AddItemToObject(r, "channels", arr);
+    return r;
+}
+
 // ─── Command dispatcher ─────────────────────────────────────────────────────
 cJSON* dio_handle_command(const char* action, cJSON* params)
 {
@@ -103,6 +125,7 @@ cJSON* dio_handle_command(const char* action, cJSON* params)
     if (!action)        return err_obj("missing_action");
 
     if (strcmp(action, "configure") == 0) return cmd_configure(params);
+    if (strcmp(action, "read")      == 0) return cmd_read();
 
     cJSON* r = cJSON_CreateObject();
     cJSON_AddStringToObject(r, "status", "error");
