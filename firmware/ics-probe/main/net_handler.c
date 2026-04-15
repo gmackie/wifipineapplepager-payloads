@@ -178,6 +178,50 @@ static cJSON* cmd_dhcp(cJSON* params)
     return resp;
 }
 
+static cJSON* cmd_static(cJSON* params)
+{
+    cJSON* resp = cJSON_CreateObject();
+    if (!s_initialized) {
+        cJSON_AddStringToObject(resp, "status", "error");
+        cJSON_AddStringToObject(resp, "error", "not_initialized");
+        return resp;
+    }
+    cJSON* ip_j   = cJSON_GetObjectItemCaseSensitive(params, "ip");
+    cJSON* mask_j = cJSON_GetObjectItemCaseSensitive(params, "mask");
+    cJSON* gw_j   = cJSON_GetObjectItemCaseSensitive(params, "gw");
+    if (!cJSON_IsString(ip_j) || !cJSON_IsString(mask_j) || !cJSON_IsString(gw_j)) {
+        cJSON_AddStringToObject(resp, "status", "error");
+        cJSON_AddStringToObject(resp, "error", "missing_ip_mask_gw");
+        return resp;
+    }
+
+    esp_netif_ip_info_t info = { 0 };
+    if (esp_netif_str_to_ip4(ip_j->valuestring,   &info.ip)      != ESP_OK ||
+        esp_netif_str_to_ip4(mask_j->valuestring, &info.netmask) != ESP_OK ||
+        esp_netif_str_to_ip4(gw_j->valuestring,   &info.gw)      != ESP_OK) {
+        cJSON_AddStringToObject(resp, "status", "error");
+        cJSON_AddStringToObject(resp, "error", "invalid_ip_format");
+        return resp;
+    }
+
+    // Stop DHCP client before assigning static addresses; ignore "already
+    // stopped" return since the caller may invoke static twice.
+    esp_netif_dhcpc_stop(s_eth_netif);
+
+    esp_err_t err = esp_netif_set_ip_info(s_eth_netif, &info);
+    if (err != ESP_OK) {
+        cJSON_AddStringToObject(resp, "status", "error");
+        cJSON_AddStringToObject(resp, "error", esp_err_to_name(err));
+        return resp;
+    }
+
+    cJSON_AddStringToObject(resp, "status", "ok");
+    cJSON_AddStringToObject(resp, "ip",      ip_j->valuestring);
+    cJSON_AddStringToObject(resp, "netmask", mask_j->valuestring);
+    cJSON_AddStringToObject(resp, "gw",      gw_j->valuestring);
+    return resp;
+}
+
 cJSON* net_handle_command(const char* action, cJSON* params)
 {
     if (!action) {
@@ -189,7 +233,8 @@ cJSON* net_handle_command(const char* action, cJSON* params)
     if (strcmp(action, "selftest") == 0 || strcmp(action, "status") == 0) {
         return cmd_status();
     }
-    if (strcmp(action, "dhcp") == 0) return cmd_dhcp(params);
+    if (strcmp(action, "dhcp") == 0)   return cmd_dhcp(params);
+    if (strcmp(action, "static") == 0) return cmd_static(params);
 
     cJSON* r = cJSON_CreateObject();
     cJSON_AddStringToObject(r, "status", "error");
