@@ -268,3 +268,37 @@ esp32_dio_monitor() {
 esp32_dio_fault_status() {
   esp32_send "dio.fault_status" "{}"
 }
+
+# --- v1.1: 4-20mA Current Output via AD5420 ---
+
+esp32_iout_set_ma() {
+  local ma="$1"
+  local resp
+  resp=$(CONFIRMATION_DIALOG "Set 4-20mA output to ${ma} mA?")
+  case "$resp" in
+    "$DUCKYSCRIPT_USER_CONFIRMED") ;;
+    *) LOG "Current output cancelled"; return 1 ;;
+  esac
+  esp32_send "iout.set_ma" "$(printf '{"ma":%s,"confirm":true}' "$ma")"
+}
+
+esp32_iout_ramp() {
+  local from_ma="$1" to_ma="$2" duration_s="$3"
+  local resp
+  resp=$(CONFIRMATION_DIALOG "Ramp 4-20mA output from ${from_ma} to ${to_ma} mA over ${duration_s}s?")
+  case "$resp" in
+    "$DUCKYSCRIPT_USER_CONFIRMED") ;;
+    *) LOG "Ramp cancelled"; return 1 ;;
+  esac
+  esp32_send "iout.ramp" \
+    "$(printf '{"from_ma":%s,"to_ma":%s,"duration_s":%d,"confirm":true}' "$from_ma" "$to_ma" "$duration_s")" \
+    "" "$((duration_s + 5))"
+}
+
+esp32_iout_off() {
+  esp32_send "iout.off" "{}"
+}
+
+esp32_iout_status() {
+  esp32_send "iout.status" "{}"
+}
