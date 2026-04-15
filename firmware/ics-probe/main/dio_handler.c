@@ -1,12 +1,19 @@
 // dio_handler.c — MAX14906 4-channel 24V digital I/O handler
 // Exposes digital input/output operations over the 24V field domain.
 
+#include <stdio.h>
 #include <string.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "cJSON.h"
 #include "config.h"
 #include "handlers.h"
 #include "max14906.h"
+
+// Set by main.c's "stop" command — aborts streaming operations early.
+extern volatile bool g_stop_requested;
 
 static const char* TAG = "dio_handler";
 static bool s_initialized = false;
@@ -148,6 +155,66 @@ static cJSON* cmd_write(cJSON* params)
     return r;
 }
 
+// ─── Action: monitor ────────────────────────────────────────────────────────
+// params: {"interval_ms": N, "duration_s": N}
+//
+// Mirrors the can.listen / adc.stream pattern: emits one JSON line per
+// state-change event via printf (buffered to USB Serial/JTAG by the ROM
+// console driver — same pipe main.c's usj_send writes to), and returns a
+// summary cJSON on normal completion. g_stop_requested is checked every
+// iteration to allow early abort via a "stop" command.
+static cJSON* cmd_monitor(cJSON* params)
+{
+    cJSON* iv_item  = params ? cJSON_GetObjectItemCaseSensitive(params, "interval_ms") : NULL;
+    cJSON* dur_item = params ? cJSON_GetObjectItemCaseSensitive(params, "duration_s")  : NULL;
+
+    uint32_t interval_ms = (iv_item  && cJSON_IsNumber(iv_item))
+                           ? (uint32_t)iv_item->valuedouble : 100;
+    uint32_t duration_s  = (dur_item && cJSON_IsNumber(dur_item))
+                           ? (uint32_t)dur_item->valuedouble : 10;
+    if (interval_ms < 1) interval_ms = 1;
+    if (duration_s  < 1) duration_s  = 1;
+
+    uint64_t deadline = (uint64_t)esp_timer_get_time() + (uint64_t)duration_s * 1000000ULL;
+
+    uint8_t prev_mask = 0;
+    bool    have_prev = false;
+    uint32_t change_count = 0;
+
+    while (esp_timer_get_time() < deadline && !g_stop_requested) {
+        uint8_t mask = 0;
+        uint64_t ts_ms = (uint64_t)esp_timer_get_time() / 1000ULL;
+
+        if (max14906_read_inputs(&mask)) {
+            if (!have_prev || mask != prev_mask) {
+                printf("{\"mask\":%u,\"ch0\":%u,\"ch1\":%u,\"ch2\":%u,\"ch3\":%u,\"ts\":%llu}\n",
+                       (unsigned)mask,
+                       (unsigned)((mask >> 0) & 1),
+                       (unsigned)((mask >> 1) & 1),
+                       (unsigned)((mask >> 2) & 1),
+                       (unsigned)((mask >> 3) & 1),
+                       (unsigned long long)ts_ms);
+                if (have_prev) change_count++;
+                prev_mask = mask;
+                have_prev = true;
+            }
+        } else {
+            printf("{\"error\":\"read_failed\",\"ts\":%llu}\n",
+                   (unsigned long long)ts_ms);
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(interval_ms));
+    }
+
+    cJSON* r = cJSON_CreateObject();
+    cJSON_AddStringToObject(r, "status", "ok");
+    cJSON_AddStringToObject(r, "stream", "end");
+    cJSON_AddNumberToObject(r, "changes",     change_count);
+    cJSON_AddNumberToObject(r, "interval_ms", interval_ms);
+    cJSON_AddNumberToObject(r, "duration_s",  duration_s);
+    return r;
+}
+
 // ─── Command dispatcher ─────────────────────────────────────────────────────
 cJSON* dio_handle_command(const char* action, cJSON* params)
 {
@@ -157,6 +224,7 @@ cJSON* dio_handle_command(const char* action, cJSON* params)
     if (strcmp(action, "configure") == 0) return cmd_configure(params);
     if (strcmp(action, "read")      == 0) return cmd_read();
     if (strcmp(action, "write")     == 0) return cmd_write(params);
+    if (strcmp(action, "monitor")   == 0) return cmd_monitor(params);
 
     cJSON* r = cJSON_CreateObject();
     cJSON_AddStringToObject(r, "status", "error");
