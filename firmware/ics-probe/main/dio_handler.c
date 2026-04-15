@@ -118,6 +118,36 @@ static cJSON* cmd_read(void)
     return r;
 }
 
+// ─── Action: write ──────────────────────────────────────────────────────────
+// params: {"ch": 0..3, "value": 0|1, "confirm": true}
+// Driving 24V outputs is destructive (can back-feed a live field wire), so
+// safety_check_confirm is required — missing/false confirm returns an error.
+static cJSON* cmd_write(cJSON* params)
+{
+    if (!params) return err_obj("missing_params");
+
+    if (!safety_check_confirm(params)) return err_obj("confirm_required");
+
+    cJSON* ch_item  = cJSON_GetObjectItemCaseSensitive(params, "ch");
+    cJSON* val_item = cJSON_GetObjectItemCaseSensitive(params, "value");
+
+    if (!ch_item || !cJSON_IsNumber(ch_item))   return err_obj("missing_ch");
+    if (!val_item || !cJSON_IsNumber(val_item)) return err_obj("missing_value");
+
+    int ch = (int)ch_item->valuedouble;
+    if (ch < 0 || ch >= DIO_CHANNELS) return err_obj("invalid_ch");
+
+    bool high = ((int)val_item->valuedouble) != 0;
+
+    if (!max14906_write_output(ch, high)) return err_obj("spi_failure");
+
+    cJSON* r = cJSON_CreateObject();
+    cJSON_AddStringToObject(r, "status", "ok");
+    cJSON_AddNumberToObject(r, "ch", ch);
+    cJSON_AddNumberToObject(r, "value", high ? 1 : 0);
+    return r;
+}
+
 // ─── Command dispatcher ─────────────────────────────────────────────────────
 cJSON* dio_handle_command(const char* action, cJSON* params)
 {
@@ -126,6 +156,7 @@ cJSON* dio_handle_command(const char* action, cJSON* params)
 
     if (strcmp(action, "configure") == 0) return cmd_configure(params);
     if (strcmp(action, "read")      == 0) return cmd_read();
+    if (strcmp(action, "write")     == 0) return cmd_write(params);
 
     cJSON* r = cJSON_CreateObject();
     cJSON_AddStringToObject(r, "status", "error");
