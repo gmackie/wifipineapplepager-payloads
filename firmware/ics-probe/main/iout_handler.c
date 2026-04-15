@@ -6,16 +6,20 @@
 #include "cJSON.h"
 #include "config.h"
 #include "handlers.h"
+#include "ad5420.h"
 
 static const char* TAG = "iout_handler";
 static bool s_initialized = false;
 
 void iout_init(void)
 {
-    // Full init in Phase 2. Stub: leave uninitialized so probe.info reports
-    // "iout": false until the real driver lands.
-    ESP_LOGI(TAG, "iout_init: stub (Phase 2 not yet implemented)");
-    s_initialized = false;
+    if (ad5420_init()) {
+        s_initialized = true;
+        ESP_LOGI(TAG, "IOUT handler ready (AD5420 detected)");
+    } else {
+        s_initialized = false;
+        ESP_LOGW(TAG, "IOUT handler disabled (AD5420 absent)");
+    }
 }
 
 bool iout_is_ready(void)
