@@ -38,6 +38,8 @@
 
 ## 2. ESP32-S3 DevKitC-1 Pin Map
 
+> **Note:** v1.1 adds W5500, MAX14906, and AD5420 on a shared SPI bus with 24V field isolation. See section 3c-bis below for their pin assignments.
+
 ```
 +---------------------------------------------------------------+
 | ESP32-S3 DevKitC-1 Pin Assignments                            |
@@ -305,8 +307,8 @@ a dedicated CS line — only one device is selected at a time.
   |          |      --------------------------------------------
   | GPIO 35 -|--+---> MOSI  --+-> MCP2515 SI    (CS = GPIO 34)
   |  (MOSI)  |  |             +-> W5500   MOSI  (CS = GPIO 4)
-  | GPIO 37 -|--|---< MISO  <-+-> MAX14906 SDI  (CS = GPIO 7)  [via ADUM1401]
-  |  (MISO)  |  |             +-> AD5420  SDIN  (CS = GPIO 10) [via ADUM1401]
+  | GPIO 37 -|--|---< MISO  <-+-> MAX14906 SDI  (CS = GPIO 7)  [via ADUM3154]
+  |  (MISO)  |  |             +-> AD5420  SDIN  (CS = GPIO 10) [via ADUM3154]
   | GPIO 36 -|--+---> SCK   ------------------^
   |  (CLK)   |
   |          |      per-chip control lines
@@ -318,11 +320,11 @@ a dedicated CS line — only one device is selected at a time.
   | GPIO  5 -|<---- W5500    INT
   | GPIO  6 -|----> W5500    RST
   |          |
-  | GPIO  7 -|----> MAX14906 CS      [crosses ADUM1401 -> 24V domain]
-  | GPIO  9 -|<---- MAX14906 FAULT   [crosses ADUM1401 <- 24V domain]
+  | GPIO  7 -|----> MAX14906 CS      [crosses ADUM3154 -> 24V domain]
+  | GPIO  9 -|<---- MAX14906 FAULT   [crosses ADUM3154 <- 24V domain]
   |          |
-  | GPIO 10 -|----> AD5420   CS      [crosses ADUM1401 -> 24V domain]
-  | GPIO 11 -|<---- AD5420   FAULT   [crosses ADUM1401 <- 24V domain]
+  | GPIO 10 -|----> AD5420   CS      [crosses ADUM3154 -> 24V domain]
+  | GPIO 11 -|<---- AD5420   FAULT   [crosses ADUM3154 <- 24V domain]
   +----------+
 ```
 
@@ -400,29 +402,44 @@ the W5500 itself stays on the 3.3V logic rail.
   (75 ohm to common node, 1nF to chassis) for EMI compliance.
 ```
 
-#### ADUM1401 digital isolator crossings
+#### ADUM digital isolator crossings
 
-A single ADUM1401 (4-channel: 3 forward + 1 reverse) carries the SPI bus
-and per-chip CS lines across the isolation barrier into the 24V field
-domain. A second small isolator channel handles the two FAULT returns.
-(If a 5-forward-1-reverse ADUM3151 is used instead, all lines fit in one
-package — see Amendment 11 of the design doc.)
+The SPI crossing into the 24V field domain needs **4 forward + 3 reverse
+channels** (forward: MOSI, SCK, CS_MAX14906, CS_AD5420; reverse: MISO,
+FAULT_MAX14906, FAULT_AD5420). That does not fit in a single ADUM1401
+(4 channels total) and does not fit the ADUM3151 (5F+1R) either.
+Amendment 11 of the design doc was loose on the part number; the correct
+options are:
+
+- **Option A (recommended, design default):** Use a single **ADUM3154**
+  (4 forward + 4 reverse, one spare reverse channel) for the entire
+  crossing. One package, one set of supplies, one insertion-delay budget.
+- **Option B (fallback):** Use an **ADUM1401** configured 3F+1R for
+  MOSI / SCK / CS_MAX14906 (forward) and MISO (reverse), plus a separate
+  **ADUM1201** (1F+1R) for CS_AD5420 forward and FAULT_MAX14906 reverse,
+  plus a second ADUM1201 for FAULT_AD5420 reverse — or equivalent
+  channel split. Three packages, three supply pairs.
+
+Option A is the design default. The diagram below shows the ADUM3154
+labeling.
 
 ```
   Logic side (ESP32, 3.3V)           |       24V field side (VISO)
                                      |
-  MOSI (GPIO 35) ----[ADUM1401 ch1]--|-->   MAX14906 SDI / AD5420 SDIN
-  SCK  (GPIO 36) ----[ADUM1401 ch2]--|-->   MAX14906 SCLK / AD5420 SCLK
-  CS_MAX14906 (GPIO 7) -[ADUM1401 ch3]|-->  MAX14906 CS
-  CS_AD5420   (GPIO 10)-[ADUM  ch4]--|-->   AD5420 CS
+  MOSI (GPIO 35) ----[ADUM3154 A1]---|-->   MAX14906 SDI / AD5420 SDIN
+  SCK  (GPIO 36) ----[ADUM3154 A2]---|-->   MAX14906 SCLK / AD5420 SCLK
+  CS_MAX14906 (GPIO 7) -[ADUM3154 A3]|-->   MAX14906 CS
+  CS_AD5420   (GPIO 10)-[ADUM3154 A4]|-->   AD5420 CS
                                      |
-  MISO (GPIO 37) <---[ADUM1401 ch5]--|---   MAX14906 SDO / AD5420 SDO
-                                     |      (open-drain wired-OR or
-                                     |       muxed by CS — handler
-                                     |       tri-states the inactive chip)
+  MISO (GPIO 37) <---[ADUM3154 B1]---|---   MAX14906 SDO / AD5420 SDO
+                                     |      (Standard SPI tri-state:
+                                     |       MAX14906 and AD5420 SDO
+                                     |       pins tri-state when their
+                                     |       CS is deasserted.)
                                      |
-  FAULT_MAX14906 (GPIO 9)  <-[iso]---|---   MAX14906 FAULT
-  FAULT_AD5420   (GPIO 11) <-[iso]---|---   AD5420 FAULT
+  FAULT_MAX14906 (GPIO 9)  <-[ADUM3154 B2]-- MAX14906 FAULT
+  FAULT_AD5420   (GPIO 11) <-[ADUM3154 B3]-- AD5420 FAULT
+                                     |      (ADUM3154 B4 = spare reverse)
                                      |
   Logic GND                          |      Field GND (isolated)
   3.3V                               |      VISO (3.3V derived on field side)
@@ -435,13 +452,12 @@ package — see Amendment 11 of the design doc.)
 - Forward crossings (logic -> field): MOSI, SCK, CS-MAX14906, CS-AD5420
 - Reverse crossings (field -> logic): MISO, FAULT-MAX14906, FAULT-AD5420
 - VISO on the field side is a local 3.3V regulator fed from the 24V field
-  rail (post-protection), so the ADUM1401 has valid supplies on both sides.
-- SPI clock is limited to 10 MHz across the isolator — within ADUM1401's
-  25 Mbps rating but well under the W5500's 20 MHz ceiling, so transfers
-  to W5500 (which does not cross the isolator) can still run faster when
-  MAX14906/AD5420 are deselected.
+  rail (post-protection), so the ADUM3154 has valid supplies on both sides.
+- Each device registers its own `clock_speed_hz` via `spi_device_interface_config_t`;
+  the ESP-IDF SPI master reclocks automatically per transaction. W5500 runs at
+  20 MHz, MAX14906 and AD5420 at 10 MHz.
 - MCP2515 traffic does not cross the isolator — it stays on the logic side
-  and is unaffected by the ADUM1401 insertion delay.
+  and is unaffected by the ADUM3154 insertion delay.
 
 ### 3d. 4-20mA ADC (INA219 via I2C)
 
