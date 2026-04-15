@@ -6,6 +6,9 @@ idf_component_register(
         "can_handler.c"
         "adc_handler.c"
         "ble_scanner.c"
+        "net_handler.c"
+        "dio_handler.c"
+        "iout_handler.c"
         "safety.c"
         "log.c"
     INCLUDE_DIRS
@@ -15,6 +18,10 @@ idf_component_register(
         driver
         esp_timer
         esp_adc
+        esp_eth
+        esp_netif
+        esp_event
+        lwip
         json
         spi_flash
         usb

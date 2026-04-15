@@ -97,6 +97,9 @@ static cJSON* handle_probe_info(const char* id)
     cJSON_AddBoolToObject(hw, "can",    can_is_ready());
     cJSON_AddBoolToObject(hw, "adc",    adc_is_ready());
     cJSON_AddBoolToObject(hw, "ble",    ble_is_ready());
+    cJSON_AddBoolToObject(hw, "net", net_is_ready());
+    cJSON_AddBoolToObject(hw, "dio", dio_is_ready());
+    cJSON_AddBoolToObject(hw, "iout", iout_is_ready());
     cJSON_AddItemToObject(resp, "hardware", hw);
 
     // List only ready capabilities for backward compat
@@ -106,6 +109,9 @@ static cJSON* handle_probe_info(const char* id)
     if (can_is_ready())    cJSON_AddItemToArray(caps, cJSON_CreateString("can"));
     if (adc_is_ready())    cJSON_AddItemToArray(caps, cJSON_CreateString("adc"));
     if (ble_is_ready())    cJSON_AddItemToArray(caps, cJSON_CreateString("ble"));
+    if (net_is_ready())  cJSON_AddItemToArray(caps, cJSON_CreateString("net"));
+    if (dio_is_ready())  cJSON_AddItemToArray(caps, cJSON_CreateString("dio"));
+    if (iout_is_ready()) cJSON_AddItemToArray(caps, cJSON_CreateString("iout"));
     cJSON_AddItemToArray(caps, cJSON_CreateString("log"));
     cJSON_AddItemToObject(resp, "capabilities", caps);
 
@@ -126,6 +132,9 @@ static cJSON* handle_probe_selftest(const char* id)
         { "can",    can_handle_command    },
         { "adc",    adc_handle_command    },
         { "ble",    ble_handle_command    },
+        { "net",    net_handle_command    },
+        { "dio",    dio_handle_command    },
+        { "iout",   iout_handle_command   },
     };
 
     for (int i = 0; i < (int)(sizeof(modules) / sizeof(modules[0])); i++) {
@@ -237,6 +246,12 @@ static cJSON* dispatch(const char* json_str)
             result = adc_handle_command(action, params);
         } else if (strcmp(module, "ble") == 0) {
             result = ble_handle_command(action, params);
+        } else if (strcmp(module, "net") == 0) {
+            result = net_handle_command(action, params);
+        } else if (strcmp(module, "dio") == 0) {
+            result = dio_handle_command(action, params);
+        } else if (strcmp(module, "iout") == 0) {
+            result = iout_handle_command(action, params);
         } else {
             result = make_error(id, "unknown_module");
         }
@@ -275,6 +290,9 @@ void app_main(void)
     can_init();
     adc_init();
     ble_init();
+    net_init();
+    dio_init();
+    iout_init();
 
     log_entry("info", "all handlers initialised");
 
