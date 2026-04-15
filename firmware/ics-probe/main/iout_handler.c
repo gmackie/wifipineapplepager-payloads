@@ -123,14 +123,56 @@ static cJSON* cmd_ramp(cJSON* params)
     return r;
 }
 
+// ─── Action: off ────────────────────────────────────────────────────────────
+// Drives the DAC to its minimum code. Not a hardware loop break —
+// see ad5420_off() documentation.
+static cJSON* cmd_off(void)
+{
+    if (!ad5420_off()) return err_obj("spi_failure");
+    s_setpoint_ma = 4.0f;
+
+    cJSON* r = cJSON_CreateObject();
+    cJSON_AddStringToObject(r, "status", "ok");
+    return r;
+}
+
+// ─── Action: status ─────────────────────────────────────────────────────────
+static cJSON* cmd_status(void)
+{
+    cJSON* r = cJSON_CreateObject();
+    cJSON_AddStringToObject(r, "status", "ok");
+    cJSON_AddNumberToObject(r, "ma", s_setpoint_ma);
+    cJSON_AddNumberToObject(r, "fault", ad5420_read_status());
+    return r;
+}
+
+// ─── Action: selftest ───────────────────────────────────────────────────────
+static cJSON* cmd_selftest(void)
+{
+    cJSON* r = cJSON_CreateObject();
+    if (s_initialized) {
+        cJSON_AddStringToObject(r, "status", "ok");
+    } else {
+        cJSON_AddStringToObject(r, "status", "error");
+        cJSON_AddStringToObject(r, "error",  "not_initialized");
+    }
+    return r;
+}
+
 // ─── Command dispatcher ─────────────────────────────────────────────────────
 cJSON* iout_handle_command(const char* action, cJSON* params)
 {
+    // selftest must be reachable even when uninitialised so probe.selftest
+    // can report the "iout" module's status instead of a bare string.
+    if (action && strcmp(action, "selftest") == 0) return cmd_selftest();
+
     if (!s_initialized) return err_obj("not_initialized");
     if (!action)        return err_obj("missing_action");
 
     if (strcmp(action, "set_ma") == 0) return cmd_set_ma(params);
     if (strcmp(action, "ramp")   == 0) return cmd_ramp(params);
+    if (strcmp(action, "off")    == 0) return cmd_off();
+    if (strcmp(action, "status") == 0) return cmd_status();
 
     cJSON* r = cJSON_CreateObject();
     cJSON_AddStringToObject(r, "status", "error");
