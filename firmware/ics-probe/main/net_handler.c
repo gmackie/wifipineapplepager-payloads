@@ -417,6 +417,52 @@ static cJSON* cmd_tcp_close(cJSON* params)
     return resp;
 }
 
+// ─── UDP one-shot send ──────────────────────────────────────────────────────
+
+static cJSON* cmd_udp_send(cJSON* params)
+{
+    if (!s_initialized) return err_resp("not_initialized");
+    cJSON* host_j = cJSON_GetObjectItemCaseSensitive(params, "host");
+    cJSON* port_j = cJSON_GetObjectItemCaseSensitive(params, "port");
+    cJSON* data_j = cJSON_GetObjectItemCaseSensitive(params, "data");
+    if (!cJSON_IsString(host_j) || !cJSON_IsNumber(port_j) || !cJSON_IsString(data_j)) {
+        return err_resp("missing_host_port_or_data");
+    }
+
+    uint8_t buf[512];
+    int n = hex_decode(data_j->valuestring, buf, sizeof(buf));
+    if (n < 0) return err_resp("bad_hex");
+
+    struct addrinfo hints = { 0 };
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_DGRAM;
+
+    char port_str[8];
+    snprintf(port_str, sizeof(port_str), "%d", port_j->valueint);
+
+    struct addrinfo* res = NULL;
+    if (getaddrinfo(host_j->valuestring, port_str, &hints, &res) != 0 || !res) {
+        return err_resp("dns_failed");
+    }
+
+    int fd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+    if (fd < 0) {
+        freeaddrinfo(res);
+        return err_resp("socket_failed");
+    }
+
+    int sent = sendto(fd, buf, n, 0, res->ai_addr, res->ai_addrlen);
+    freeaddrinfo(res);
+    close(fd);
+
+    if (sent < 0) return err_resp("sendto_failed");
+
+    cJSON* resp = cJSON_CreateObject();
+    cJSON_AddStringToObject(resp, "status", "ok");
+    cJSON_AddNumberToObject(resp, "bytes_sent", sent);
+    return resp;
+}
+
 cJSON* net_handle_command(const char* action, cJSON* params)
 {
     if (!action) {
@@ -434,6 +480,7 @@ cJSON* net_handle_command(const char* action, cJSON* params)
     if (strcmp(action, "tcp_send") == 0)    return cmd_tcp_send(params);
     if (strcmp(action, "tcp_recv") == 0)    return cmd_tcp_recv(params);
     if (strcmp(action, "tcp_close") == 0)   return cmd_tcp_close(params);
+    if (strcmp(action, "udp_send") == 0)    return cmd_udp_send(params);
 
     cJSON* r = cJSON_CreateObject();
     cJSON_AddStringToObject(r, "status", "error");
