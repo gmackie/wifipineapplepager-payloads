@@ -2,8 +2,8 @@
 
 > **Fork**: gmackie/wifipineapplepager-payloads  
 > **Upstream**: hak5/wifipineapplepager-payloads  
-> **Version**: 2.5.0  
-> **Last Updated**: January 2025
+> **Version**: 3.0.0  
+> **Last Updated**: April 2026
 
 This document catalogs all payloads added to this fork beyond the upstream Hak5 repository.
 
@@ -15,9 +15,11 @@ This document catalogs all payloads added to this fork beyond the upstream Hak5 
 | Alert-Triggered | 4 | Reactive |
 | Exfiltration | 4 | Active |
 | Interception | 4 | Active |
+| Remote Access | 1 | Active |
 | Utilities | 2 | Passive |
 | SDR/RF | 3 | Passive |
 | Red Team Toolkit | 39+ modules | Mixed |
+| ICS/OT Probe | 32 | Mixed |
 
 ---
 
@@ -52,6 +54,8 @@ This document catalogs all payloads added to this fork beyond the upstream Hak5 
 | Packet Sniffer | `interception/packet-sniffer/` | User | Collect | Passive | tcpdump/tshark |
 | Credential Harvester | `interception/cred-harvester/` | User | Collect | Active | tshark |
 | SSL Strip Helper | `interception/ssl-strip-helper/` | User | Access | Active | sslstrip/bettercap |
+| **REMOTE ACCESS** |
+| Agent Console | `remote_access/agent_console/` | User | Access | Active | python3 |
 | **UTILITIES** |
 | Evidence Packager | `general/evidence-packager/` | User | Report | Passive | tar, sha256sum |
 | Dependency Checker | `general/dependency-checker/` | User | Setup | Passive | - |
@@ -174,6 +178,23 @@ Configures network for man-in-the-middle:
 
 ---
 
+### Remote Access Payloads
+
+#### Agent Console
+**Path**: `library/user/remote_access/agent_console/`  
+**Risk**: Active  
+**Dependencies**: `python3`
+
+Persistent pager-side session console for local coding agents and agent bridges:
+- Auto-resumes the most recent valid session and shows a dashboard summary
+- Stores sessions and transcripts under `/root/loot/agent-console/`
+- Supports `command` and `http` backends
+- Keeps job state on disk so sessions can survive exit/reopen cycles
+
+**Security Note**: Treat transcripts as sensitive operator data. They may include prompts, outputs, secrets, and error traces.
+
+---
+
 ### SDR/RF Payloads
 
 #### RF Baseline Alert
@@ -292,6 +313,22 @@ Comprehensive modular toolkit with 39+ modules:
 3. `rf-baseline-alert` → monitor ISM bands
 4. `evidence-packager` → bundle findings
 
+### ICS Consulting POC (v1.1 — requires ESP32 probe)
+1. `probe-ethernet-setup` → configure probe Ethernet (DHCP/static)
+2. `ics-network-sweep` → discover devices on Ethernet via probe
+3. `probe-modbus-tcp-scan` → Modbus TCP FC17 sweep via probe
+4. `probe-opcua-discover` → OPC UA Hello/ACK handshake
+5. `probe-bacnet-whois` → BACnet Who-Is broadcast (partial)
+6. `modbus-rtu-bus-scan` → RS-485 slave enumeration
+7. `can-bus-sniffer` → passive CAN capture
+8. `dio-line-monitor` → 24V digital input monitoring
+9. `dio-pulse-counter` → pulse counting (flow/tach)
+10. `dio-output-test` → 24V output drive (Level C)
+11. `analog-loop-reader` → 4-20mA read with scaling
+12. `analog-loop-simulator` → 4-20mA transmitter simulation
+13. `analog-loop-ramp` → controlled mA ramp for PLC testing
+14. `ics-asset-report` → compile findings into deliverable
+
 ### Credential Harvesting (Authorized)
 1. `mitm-setup` → configure interception
 2. `cred-harvester` → monitor protocols
@@ -319,6 +356,7 @@ Comprehensive modular toolkit with 39+ modules:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 3.0.0 | Apr 2026 | ICS/OT Probe v1.1: Ethernet, 24V DIO, 4-20mA output, 9 new payloads |
 | 2.5.0 | Jan 2025 | Added SDR payloads, utilities, documentation |
 | 2.4.0 | Jan 2025 | Added exfiltration, interception payloads |
 | 2.3.0 | Dec 2024 | Red Team Toolkit v2.3, alert payloads |
