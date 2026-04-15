@@ -66,11 +66,10 @@ _generate_report() {
   device_count=$(echo "$inventory" | grep -o '"id"' | wc -l | tr -d ' ')
 
   # Extract per-device fields
-  local protocols vendors risks ips
+  local protocols vendors risks
   protocols=$(_extract_field "$inventory" "protocol")
   vendors=$(_extract_field "$inventory" "vendor")
   risks=$(_extract_field "$inventory" "risk")
-  ips=$(_extract_field "$inventory" "ip")
 
   local ts
   ts=$(date '+%Y-%m-%d %H:%M:%S')

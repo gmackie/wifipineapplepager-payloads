@@ -67,7 +67,6 @@ subnet_base=$(echo "$subnet" | sed 's/\.[0-9]*$//')
 spinner_id=$(START_SPINNER "Scanning ${subnet_base}.1-254 on port 502...")
 
 hosts_502=()
-host_count=0
 scanned=0
 
 while IFS= read -r host; do

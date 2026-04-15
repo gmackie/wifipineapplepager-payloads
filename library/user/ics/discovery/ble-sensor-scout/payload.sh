@@ -180,7 +180,8 @@ parse_ble_output() {
 # ---------------------------------------------------------------------------
 
 save_artifact() {
-  local artifact_file="$ARTIFACTS_DIR/ble_ics_scan_$(date +%Y%m%d_%H%M%S).json"
+  local artifact_file
+  artifact_file="$ARTIFACTS_DIR/ble_ics_scan_$(date +%Y%m%d_%H%M%S).json"
 
   {
     echo "{"
@@ -264,7 +265,8 @@ main() {
 
   LED C SLOW
 
-  local raw_output="$ARTIFACTS_DIR/ble_raw_$(date +%Y%m%d_%H%M%S).txt"
+  local raw_output
+  raw_output="$ARTIFACTS_DIR/ble_raw_$(date +%Y%m%d_%H%M%S).txt"
   local spinner_id
   spinner_id=$(START_SPINNER "Scanning BLE (${duration}s)...")
 

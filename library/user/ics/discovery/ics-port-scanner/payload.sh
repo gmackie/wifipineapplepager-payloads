@@ -77,8 +77,8 @@ classify_port() {
 
 run_nmap_scan() {
   local subnet="$1"
-  local out_xml="$ARTIFACTS_DIR/scan_$(date +%Y%m%d_%H%M%S).xml"
-  local out_gnmap="${out_xml%.xml}.gnmap"
+  local out_xml
+  out_xml="$ARTIFACTS_DIR/scan_$(date +%Y%m%d_%H%M%S).xml"
 
   LOG "Launching nmap scan..."
   LOG "Ports: $ICS_PORT_LIST"
@@ -108,7 +108,8 @@ run_nmap_scan() {
 
 parse_nmap_xml() {
   local xml_file="$1"
-  local results_file="$ARTIFACTS_DIR/ics_hits_$(date +%Y%m%d_%H%M%S).txt"
+  local results_file
+  results_file="$ARTIFACTS_DIR/ics_hits_$(date +%Y%m%d_%H%M%S).txt"
   local hit_count=0
 
   {

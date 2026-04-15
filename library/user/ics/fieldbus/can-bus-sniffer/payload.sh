@@ -20,8 +20,6 @@ SCRIPT_DIR="$(dirname "$0")"
 source "$SCRIPT_DIR/../../lib/ics_protocols.sh"
 source "$SCRIPT_DIR/../../lib/esp32.sh"
 
-# Common automotive/industrial CAN baud rates (bps)
-BAUD_OPTIONS="125000|250000|500000|1000000"
 
 # ---------------------------------------------------------------------------
 # Helpers

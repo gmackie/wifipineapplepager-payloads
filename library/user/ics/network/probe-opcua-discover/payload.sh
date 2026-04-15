@@ -71,7 +71,6 @@ main() {
   # This is a simplified binary Hello — full OPC UA encoding ideally uses python3.
   # For v1.1, send a raw Hello and look for an Acknowledge response.
   local endpoint_url="opc.tcp://${target}:${port}"
-  local url_len=${#endpoint_url}
 
   # OPC UA Hello: MSG type "HEL" + "F" (final), message size, protocol version=0,
   # receive/send buffer sizes, max message/chunk sizes, endpoint URL

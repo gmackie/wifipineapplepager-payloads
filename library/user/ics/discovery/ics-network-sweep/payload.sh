@@ -160,7 +160,8 @@ probe_host() {
 print_summary() {
   local total_hosts=${#DISCOVERED_HOSTS[@]}
   local total_ics=${#CONFIRMED_ICS[@]}
-  local report_file="$ARTIFACTS_DIR/sweep_report_$(date +%Y%m%d_%H%M%S).txt"
+  local report_file
+  report_file="$ARTIFACTS_DIR/sweep_report_$(date +%Y%m%d_%H%M%S).txt"
 
   {
     echo "========================================"

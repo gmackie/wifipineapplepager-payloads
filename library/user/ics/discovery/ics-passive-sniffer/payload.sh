@@ -125,7 +125,8 @@ process_packet_line() {
 run_passive_capture() {
   local iface="$1"
   local duration="$2"
-  local pcap_file="$ARTIFACTS_DIR/ics_passive_$(date +%Y%m%d_%H%M%S).pcap"
+  local pcap_file
+  pcap_file="$ARTIFACTS_DIR/ics_passive_$(date +%Y%m%d_%H%M%S).pcap"
 
   LOG "Interface: $iface"
   LOG "Duration:  ${duration}s"
@@ -180,7 +181,8 @@ run_passive_capture() {
 
 generate_report() {
   local pcap_file="$1"
-  local report_file="$ARTIFACTS_DIR/passive_report_$(date +%Y%m%d_%H%M%S).txt"
+  local report_file
+  report_file="$ARTIFACTS_DIR/passive_report_$(date +%Y%m%d_%H%M%S).txt"
 
   {
     echo "========================================"

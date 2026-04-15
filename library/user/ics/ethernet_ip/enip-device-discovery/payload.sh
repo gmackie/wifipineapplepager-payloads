@@ -65,10 +65,6 @@ _parse_listidentity() {
   # Identity item starts at byte 30 (nibble 60)
 
   # offset 30 (nibble 60): encap protocol version (2 bytes, LE)
-  local enc_ver_hi enc_ver_lo
-  enc_ver_lo="${hexdata:60:2}"
-  enc_ver_hi="${hexdata:62:2}"
-
   # offset 32 (nibble 64): socket address — family (2 BE), port (2 BE), IP (4 BE)
   local port_hi port_lo
   port_hi="${hexdata:68:2}"
