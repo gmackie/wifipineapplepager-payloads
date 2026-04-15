@@ -41,3 +41,40 @@
 // --- Safety ---
 #define RATE_LIMIT_MS       100  // Minimum ms between commands to same handler
 #define WATCHDOG_TIMEOUT_S  30
+
+// =============================================================================
+// v1.1 additions — shared SPI bus for W5500 / MCP2515 / MAX14906 / AD5420
+// =============================================================================
+//
+// All four chips share one SPI bus (SPI3 / HSPI). MCP2515 already uses
+// pins defined above. The new chips add their own CS/INT/etc lines.
+//
+// Logical bus map (SPI3):
+//   MOSI  = CAN_SPI_MOSI (35)
+//   MISO  = CAN_SPI_MISO (37)
+//   CLK   = CAN_SPI_CLK  (36)
+//
+// The ADUM1401 digital isolator sits between the ESP32 and the MAX14906/AD5420
+// pair. It does not need its own GPIO — it's transparent to the SPI bus.
+
+// --- W5500 Ethernet controller ---
+#define W5500_CS_PIN        4
+#define W5500_INT_PIN       5
+#define W5500_RST_PIN       6
+#define W5500_PHY_ADDR      1
+#define W5500_SPI_MHZ       20
+
+// --- MAX14906 4-channel 24V DIO (24V field domain) ---
+#define MAX14906_CS_PIN     7
+#define MAX14906_FAULT_PIN  9
+#define MAX14906_SPI_MHZ    10
+#define DIO_CHANNELS        4
+
+// --- AD5420 4-20mA current output DAC (24V field domain) ---
+#define AD5420_CS_PIN       10
+#define AD5420_FAULT_PIN    11
+#define AD5420_SPI_MHZ      10
+#define IOUT_MIN_MA         0.00f
+#define IOUT_MAX_MA         24.00f   // chip supports >20mA, clamp in handler
+#define IOUT_OPERATING_MIN  4.00f
+#define IOUT_OPERATING_MAX  20.00f
