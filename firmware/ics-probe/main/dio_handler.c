@@ -215,16 +215,57 @@ static cJSON* cmd_monitor(cJSON* params)
     return r;
 }
 
+// ─── Action: fault_status ───────────────────────────────────────────────────
+// Returns decoded Interrupt + OvrLdChF registers.
+static cJSON* cmd_fault_status(void)
+{
+    uint16_t status = max14906_read_faults();
+    uint8_t  intr   = (uint8_t)(status & 0xFF);
+    uint8_t  ovrld  = (uint8_t)((status >> 8) & 0xFF);
+
+    cJSON* r = cJSON_CreateObject();
+    cJSON_AddStringToObject(r, "status", "ok");
+    cJSON_AddNumberToObject(r, "interrupt", intr);
+    cJSON_AddNumberToObject(r, "overload",  ovrld);
+
+    cJSON* faulted = cJSON_CreateArray();
+    for (int ch = 0; ch < DIO_CHANNELS; ch++) {
+        if ((ovrld >> ch) & 0x01) {
+            cJSON_AddItemToArray(faulted, cJSON_CreateNumber(ch));
+        }
+    }
+    cJSON_AddItemToObject(r, "channels_faulted", faulted);
+    return r;
+}
+
+// ─── Action: selftest ───────────────────────────────────────────────────────
+static cJSON* cmd_selftest(void)
+{
+    cJSON* r = cJSON_CreateObject();
+    if (s_initialized) {
+        cJSON_AddStringToObject(r, "status", "ok");
+    } else {
+        cJSON_AddStringToObject(r, "status", "error");
+        cJSON_AddStringToObject(r, "error",  "not_initialized");
+    }
+    return r;
+}
+
 // ─── Command dispatcher ─────────────────────────────────────────────────────
 cJSON* dio_handle_command(const char* action, cJSON* params)
 {
+    // selftest must be reachable even when uninitialised so probe.selftest
+    // can report the "dio" module's status instead of a bare string.
+    if (action && strcmp(action, "selftest") == 0) return cmd_selftest();
+
     if (!s_initialized) return err_obj("not_initialized");
     if (!action)        return err_obj("missing_action");
 
-    if (strcmp(action, "configure") == 0) return cmd_configure(params);
-    if (strcmp(action, "read")      == 0) return cmd_read();
-    if (strcmp(action, "write")     == 0) return cmd_write(params);
-    if (strcmp(action, "monitor")   == 0) return cmd_monitor(params);
+    if (strcmp(action, "configure")    == 0) return cmd_configure(params);
+    if (strcmp(action, "read")         == 0) return cmd_read();
+    if (strcmp(action, "write")        == 0) return cmd_write(params);
+    if (strcmp(action, "monitor")      == 0) return cmd_monitor(params);
+    if (strcmp(action, "fault_status") == 0) return cmd_fault_status();
 
     cJSON* r = cJSON_CreateObject();
     cJSON_AddStringToObject(r, "status", "error");
