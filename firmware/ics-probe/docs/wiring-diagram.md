@@ -283,6 +283,166 @@ galvanic isolation. The isolated side is powered by a B0505S isolated DC-DC conv
   Add 100nF cap between VCC and GND, close to IC.
 ```
 
+### 3c-bis. v1.1 Additions — 24V Field Domain
+
+This section documents the v1.1 hardware additions: a W5500 Ethernet
+controller on the logic side and an isolated 24V field domain housing the
+MAX14906 (industrial DIO) and AD5420 (4-20mA current output DAC). All three
+new chips sit on the **same SPI bus as the MCP2515**.
+
+**CS pin values below will be added to `config.h` in Task 1.1 — do not
+assume they are defined yet.**
+
+#### Shared SPI bus layout
+
+All four SPI peripherals (MCP2515, W5500, MAX14906, AD5420) share one bus.
+MOSI/MISO/SCK are the existing MCP2515 pins from `config.h`. Each chip owns
+a dedicated CS line — only one device is selected at a time.
+
+```
+  +----------+
+  |  ESP32   |      shared SPI3 / HSPI bus
+  |          |      --------------------------------------------
+  | GPIO 35 -|--+---> MOSI  --+-> MCP2515 SI    (CS = GPIO 34)
+  |  (MOSI)  |  |             +-> W5500   MOSI  (CS = GPIO 4)
+  | GPIO 37 -|--|---< MISO  <-+-> MAX14906 SDI  (CS = GPIO 7)  [via ADUM1401]
+  |  (MISO)  |  |             +-> AD5420  SDIN  (CS = GPIO 10) [via ADUM1401]
+  | GPIO 36 -|--+---> SCK   ------------------^
+  |  (CLK)   |
+  |          |      per-chip control lines
+  |          |      --------------------------------------------
+  | GPIO 34 -|----> MCP2515  CS      (existing)
+  | GPIO 33 -|<---- MCP2515  INT     (existing)
+  |          |
+  | GPIO  4 -|----> W5500    CS
+  | GPIO  5 -|<---- W5500    INT
+  | GPIO  6 -|----> W5500    RST
+  |          |
+  | GPIO  7 -|----> MAX14906 CS      [crosses ADUM1401 -> 24V domain]
+  | GPIO  9 -|<---- MAX14906 FAULT   [crosses ADUM1401 <- 24V domain]
+  |          |
+  | GPIO 10 -|----> AD5420   CS      [crosses ADUM1401 -> 24V domain]
+  | GPIO 11 -|<---- AD5420   FAULT   [crosses ADUM1401 <- 24V domain]
+  +----------+
+```
+
+| Chip     | Domain      | CS     | INT/FAULT | RST    | Max SPI |
+|----------|-------------|--------|-----------|--------|---------|
+| MCP2515  | logic       | GPIO34 | GPIO33 (INT) | -     | 10 MHz  |
+| W5500    | logic       | GPIO4  | GPIO5 (INT)  | GPIO6 | 20 MHz  |
+| MAX14906 | 24V field   | GPIO7  | GPIO9 (FAULT)| -     | 10 MHz  |
+| AD5420   | 24V field   | GPIO10 | GPIO11 (FAULT)| -    | 10 MHz  |
+
+> **Note: W5500 is NOT in the 24V isolation domain.** It sits on the
+> USB/logic side of the board with the ESP32 and shares 3.3V rail. Ethernet
+> isolation is provided by the RJ45 MagJack's integrated transformer on the
+> twisted-pair side — no digital isolator is needed for W5500 SPI.
+
+#### 24V field rail path
+
+External 24V enters via a Phoenix terminal block and is conditioned before
+it reaches the MAX14906 and AD5420 VSUP pins. All passives are on the
+field (24V) side of the isolation boundary.
+
+```
+  Phoenix 3-pin terminal block
+    24V+  ---+
+    24V-  ---|--- (field GND, isolated from logic GND)
+    EARTH ---|--- chassis
+             |
+             v
+        +----+----+       reverse polarity
+        |  SMBJ33A|       +----|<|----+     1.5A resettable
+        |   TVS   |       |   SS54    |      polyfuse
+        +---------+       +-----------+     +---/\/\/---+
+             |                   |          |           |
+    24V+ ----+----->|------------+--[PTC]---+-----+-----+-----> VSUP (field rail)
+                                                  |     |
+                                                  v     v
+                                           MAX14906   AD5420
+                                           VSUP pin   VSUP pin
+             [100nF + 10uF bulk decoupling at each IC VSUP, field GND return]
+
+  Protection stack, in order from the terminal block:
+    1. SMBJ33A    - 33V unidirectional TVS, clamps transients
+    2. SS54       - Schottky reverse polarity protection (5A, 40V)
+    3. 1.5A PTC   - resettable polyfuse, overcurrent limit
+    4. Bulk caps  - local decoupling at each IC
+```
+
+#### Ethernet MagJack pinout (W5500)
+
+The W5500 connects to a HanRun HR911105A (or equivalent) RJ45 jack with
+integrated magnetics. Magnetics isolate the twisted pair from the board —
+the W5500 itself stays on the 3.3V logic rail.
+
+```
+  W5500                 MagJack (HR911105A)           RJ45
+  -----                 --------------------          ----
+  TXP  ---------------> TX+  (pin 1)
+  TXN  ---------------> TX-  (pin 2)        isolation
+  RXP  <--------------- RX+  (pin 3)        transformer
+  RXN  <--------------- RX-  (pin 6)        + common
+                                            mode choke
+                                                            RJ45 pin 1 (TX+)
+                                                            RJ45 pin 2 (TX-)
+                                                            RJ45 pin 3 (RX+)
+                                                            RJ45 pin 6 (RX-)
+                                                            pins 4,5,7,8 ->
+                                                              bob smith term.
+                                                              (75R + 1nF to chassis)
+
+  LED driver pins:
+    LINK  -> green LED (link/activity)
+    SPD   -> yellow LED (100Mbps indicator)
+
+  RJ45 unused pairs (4/5, 7/8) terminated via Bob Smith network
+  (75 ohm to common node, 1nF to chassis) for EMI compliance.
+```
+
+#### ADUM1401 digital isolator crossings
+
+A single ADUM1401 (4-channel: 3 forward + 1 reverse) carries the SPI bus
+and per-chip CS lines across the isolation barrier into the 24V field
+domain. A second small isolator channel handles the two FAULT returns.
+(If a 5-forward-1-reverse ADUM3151 is used instead, all lines fit in one
+package — see Amendment 11 of the design doc.)
+
+```
+  Logic side (ESP32, 3.3V)           |       24V field side (VISO)
+                                     |
+  MOSI (GPIO 35) ----[ADUM1401 ch1]--|-->   MAX14906 SDI / AD5420 SDIN
+  SCK  (GPIO 36) ----[ADUM1401 ch2]--|-->   MAX14906 SCLK / AD5420 SCLK
+  CS_MAX14906 (GPIO 7) -[ADUM1401 ch3]|-->  MAX14906 CS
+  CS_AD5420   (GPIO 10)-[ADUM  ch4]--|-->   AD5420 CS
+                                     |
+  MISO (GPIO 37) <---[ADUM1401 ch5]--|---   MAX14906 SDO / AD5420 SDO
+                                     |      (open-drain wired-OR or
+                                     |       muxed by CS — handler
+                                     |       tri-states the inactive chip)
+                                     |
+  FAULT_MAX14906 (GPIO 9)  <-[iso]---|---   MAX14906 FAULT
+  FAULT_AD5420   (GPIO 11) <-[iso]---|---   AD5420 FAULT
+                                     |
+  Logic GND                          |      Field GND (isolated)
+  3.3V                               |      VISO (3.3V derived on field side)
+                                     |
+                                ISOLATION
+                                 BARRIER
+```
+
+**Key points:**
+- Forward crossings (logic -> field): MOSI, SCK, CS-MAX14906, CS-AD5420
+- Reverse crossings (field -> logic): MISO, FAULT-MAX14906, FAULT-AD5420
+- VISO on the field side is a local 3.3V regulator fed from the 24V field
+  rail (post-protection), so the ADUM1401 has valid supplies on both sides.
+- SPI clock is limited to 10 MHz across the isolator — within ADUM1401's
+  25 Mbps rating but well under the W5500's 20 MHz ceiling, so transfers
+  to W5500 (which does not cross the isolator) can still run faster when
+  MAX14906/AD5420 are deselected.
+- MCP2515 traffic does not cross the isolator — it stays on the logic side
+  and is unaffected by the ADUM1401 insertion delay.
+
 ### 3d. 4-20mA ADC (INA219 via I2C)
 
 ```
