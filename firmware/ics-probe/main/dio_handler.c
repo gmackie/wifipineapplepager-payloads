@@ -6,16 +6,20 @@
 #include "cJSON.h"
 #include "config.h"
 #include "handlers.h"
+#include "max14906.h"
 
 static const char* TAG = "dio_handler";
 static bool s_initialized = false;
 
 void dio_init(void)
 {
-    // Full init in Phase 2. Stub: leave uninitialized so probe.info reports
-    // "dio": false until the real driver lands.
-    ESP_LOGI(TAG, "dio_init: stub (Phase 2 not yet implemented)");
-    s_initialized = false;
+    if (max14906_init()) {
+        s_initialized = true;
+        ESP_LOGI(TAG, "DIO handler ready (MAX14906 detected)");
+    } else {
+        s_initialized = false;
+        ESP_LOGW(TAG, "DIO handler disabled (MAX14906 absent)");
+    }
 }
 
 bool dio_is_ready(void)
