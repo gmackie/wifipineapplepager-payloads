@@ -8,6 +8,7 @@ idf_component_register(
         "ble_scanner.c"
         "net_handler.c"
         "dio_handler.c"
+        "max14906.c"
         "iout_handler.c"
         "safety.c"
         "log.c"
