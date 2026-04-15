@@ -1,0 +1,8 @@
+{
+  "type": "http",
+  "submit_url": "http://127.0.0.1:8080/jobs",
+  "status_url": "http://127.0.0.1:8080/jobs/{remote_job_id}",
+  "method": "POST",
+  "poll_method": "GET",
+  "timeout_seconds": 30
+}

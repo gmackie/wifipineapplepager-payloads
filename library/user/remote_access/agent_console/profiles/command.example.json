@@ -1,0 +1,9 @@
+{
+  "type": "command",
+  "command": [
+    "/bin/sh",
+    "-lc",
+    "printf 'echo: %s\\n' \"$AGENT_CONSOLE_PROMPT\""
+  ],
+  "timeout_seconds": 30
+}
