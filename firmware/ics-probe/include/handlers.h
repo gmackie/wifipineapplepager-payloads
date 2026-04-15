@@ -36,6 +36,21 @@ void ble_init(void);
 bool ble_is_ready(void);
 cJSON* ble_handle_command(const char* action, cJSON* params);
 
+// --- Network Handler (W5500 Ethernet) ---
+void net_init(void);
+bool net_is_ready(void);
+cJSON* net_handle_command(const char* action, cJSON* params);
+
+// --- Digital I/O Handler (MAX14906) ---
+void dio_init(void);
+bool dio_is_ready(void);
+cJSON* dio_handle_command(const char* action, cJSON* params);
+
+// --- Current Output Handler (AD5420) ---
+void iout_init(void);
+bool iout_is_ready(void);
+cJSON* iout_handle_command(const char* action, cJSON* params);
+
 // --- Safety ---
 void safety_init(void);
 bool safety_check_confirm(cJSON* params);
