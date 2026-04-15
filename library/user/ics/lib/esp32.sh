@@ -236,3 +236,35 @@ esp32_net_udp_send() {
   local host="$1" port="$2" hex="$3"
   esp32_send "net.udp_send" "$(printf '{"host":"%s","port":%d,"data":"%s"}' "$host" "$port" "$hex")"
 }
+
+# --- v1.1: Digital I/O via MAX14906 ---
+
+esp32_dio_configure() {
+  local ch="$1" mode="$2"
+  esp32_send "dio.configure" "$(printf '{"ch":%d,"mode":"%s"}' "$ch" "$mode")"
+}
+
+esp32_dio_read() {
+  esp32_send "dio.read" "{}"
+}
+
+esp32_dio_write() {
+  local ch="$1" value="$2"
+  local resp
+  resp=$(CONFIRMATION_DIALOG "Drive DIO channel $ch to $value?")
+  case "$resp" in
+    "$DUCKYSCRIPT_USER_CONFIRMED") ;;
+    *) LOG "DIO write cancelled"; return 1 ;;
+  esac
+  esp32_send "dio.write" "$(printf '{"ch":%d,"value":%d,"confirm":true}' "$ch" "$value")"
+}
+
+esp32_dio_monitor() {
+  local interval_ms="${1:-100}" duration_s="${2:-60}"
+  esp32_send "dio.monitor" \
+    "$(printf '{"interval_ms":%d,"duration_s":%d}' "$interval_ms" "$duration_s")" "" "$((duration_s + 5))"
+}
+
+esp32_dio_fault_status() {
+  esp32_send "dio.fault_status" "{}"
+}
