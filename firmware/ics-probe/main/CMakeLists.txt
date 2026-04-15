@@ -9,6 +9,7 @@ idf_component_register(
         "net_handler.c"
         "dio_handler.c"
         "max14906.c"
+        "ad5420.c"
         "iout_handler.c"
         "safety.c"
         "log.c"
