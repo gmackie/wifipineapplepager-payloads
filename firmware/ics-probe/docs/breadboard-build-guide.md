@@ -450,6 +450,244 @@ with a pull-up/pull-down scheme.
 
 ---
 
+## Phase 6: W5500 Ethernet
+
+### Why sixth
+Wired Ethernet gives the probe a reliable uplink in plants where Wi-Fi
+is blocked or unreliable, and lets you drop directly onto a managed
+switch SPAN/mirror port. The W5500 shares the existing SPI bus with
+the MCP2515, so only CS/INT/RST are new GPIOs. Pin values are tracked
+in `docs/wiring-diagram.md` section 3c-bis — do not duplicate them here.
+
+### Parts needed
+- W5500 module (common Wiznet W5500 breakout, e.g. WIZnet WIZ850io or
+  generic "W5500 Lite" board)
+- RJ45 MagJack HR911105A (only if the breakout does not already
+  integrate one — most W5500 breakouts do)
+- 100nF decoupling cap on the 3.3V pin, 10µF bulk cap nearby
+- Jumper wires
+
+### Breadboard layout
+
+```
+ESP32-S3                W5500 Module
+─────────               ────────────
+SPI MOSI ───────┬────── MOSI      (shared with MCP2515)
+SPI MISO ───────┼────── MISO      (shared with MCP2515)
+SPI SCK  ───────┴────── SCK       (shared with MCP2515)
+GPIO 4   ────────────── CS        (unique)
+GPIO 5   ────────────── INT       (unique)
+GPIO 6   ────────────── RST       (unique)
+3.3V ────────────────── VCC       (100nF + 10µF decouple)
+GND ─────────────────── GND
+                        RJ45 MagJack (on-board) ── Ethernet cable
+```
+
+See `docs/wiring-diagram.md` section 3c-bis for the authoritative pin
+numbers (`W5500_CS_GPIO`, `W5500_INT_GPIO`, `W5500_RST_GPIO` from
+`include/config.h`).
+
+### Wiring checks
+1. **3.3V supply:** multimeter on W5500 VCC pin — must read 3.3V
+   (the W5500 is NOT 5V tolerant on the Vcc rail).
+2. **Link LED:** plug in a live Ethernet cable — the MagJack link LED
+   should light up as soon as power is applied, even before firmware
+   brings the interface up.
+3. **CS idles high:** with firmware running but no transfer in flight,
+   probe GPIO 4 (W5500 CS) — should idle at 3.3V. Same check for
+   MCP2515 CS confirms the shared SPI bus isn't colliding.
+4. **SPI continuity:** confirm MOSI/MISO/SCK are physically shared with
+   the MCP2515 rails (continuity beep from each ESP pin to both chips).
+
+### Power-on procedure
+Standard USB power to the ESP32-S3 DevKitC-1. The W5500 draws its 3.3V
+from the same rail — no separate supply needed.
+
+### Self-test
+```json
+{"cmd":"probe.info"}
+```
+Expected response includes `"net":true` in the capabilities.
+
+```json
+{"cmd":"net.dhcp","params":{"timeout_s":10}}
+```
+Against a live switch with DHCP, expected:
+```json
+{"status":"ok","ip":"192.168.x.x","gw":"192.168.x.1","mask":"255.255.255.0"}
+```
+
+---
+
+## Phase 7: 24V Field Domain Power Supply
+
+### Why seventh
+Phases 8 onwards (MAX14906 digital IO and AD5420 4-20mA output) run on
+a real 24V industrial rail. This phase stands up and proves out that
+rail by itself — no ICs attached — so you catch reverse-polarity,
+over-voltage, or polyfuse problems before you fry a $15 chip.
+
+### Parts needed
+- External 24V bench supply (or 24V industrial power brick)
+- 3-position Phoenix MC 1.5mm terminal block (+ / GND / shield)
+- SMBJ33A TVS diode (33V standoff, clamps transients)
+- SS54 Schottky reverse-polarity diode (5A, 40V)
+- 1.5A resettable polyfuse (PTC)
+- 10µF ceramic bulk cap + 100nF decoupling cap on the 24V rail
+
+### Breadboard layout
+
+```
+Phoenix MC 1.5mm (board edge)
+  │
+  ├── (+) ──[1.5A polyfuse]──[SS54 ▶|]──┬── 24V field rail
+  │                                      │
+  │                                     [SMBJ33A] (cathode to rail,
+  │                                      │         anode to GND)
+  │                                      │
+  │                                     [10µF] ── GND
+  │                                     [100nF] ── GND
+  │
+  ├── (GND) ─────────────────────────── field GND rail
+  │
+  └── (shield) ── chassis / earth (optional, leave floating on bench)
+```
+
+Reserve one full power rail pair on the breadboard for this **24V field
+domain** — keep it physically separated from the 3.3V logic rails so
+you don't accidentally hand-probe 24V onto the ESP32.
+
+### Wiring checks
+**CRITICAL: measure with a multimeter BEFORE connecting any IC to this
+rail.** Chip damage in this phase is permanent.
+
+1. Power the Phoenix block from the 24V bench supply, current-limited
+   to ~200 mA for the first power-up.
+2. Verify 24V ±0.5V present on the field rail downstream of the SS54.
+3. Verify the polyfuse has not tripped (no voltage drop across it at
+   idle — should read <50 mV).
+4. Verify the TVS is not clamping: measure leakage into SMBJ33A — must
+   be <1 mA at 24V. If it's drawing amps, it's either wrong-polarity or
+   the wrong part (you grabbed an SMBJ3.3A by mistake).
+5. **Reverse polarity test:** swap the bench supply leads briefly. The
+   SS54 must block — field rail should read 0V and the bench supply
+   current should stay near zero. Restore polarity.
+
+### Power-on procedure
+24V bench supply → Phoenix input. The ESP32 side remains USB-powered
+from the pager and is not connected to the 24V rail yet.
+
+### Self-test
+No firmware check at this phase — it's a power supply only. Proceed to
+Phase 8 to verify under load with real chips.
+
+---
+
+## Phase 8: MAX14906 + AD5420 on 24V Field Rail
+
+### Why eighth
+This is the payoff phase: real industrial digital output (MAX14906
+quad digital IO) and real 4-20mA loop output (AD5420) driven from the
+24V field rail you just built. Both sit behind a digital isolator so
+the ESP32 domain stays safe even if something downstream flashes over.
+
+### Parts needed
+- MAX14906 breakout or TSSOP-to-DIP adapter
+- AD5420 breakout or TSSOP-to-DIP adapter
+- ADUM3154 (preferred) **OR** ADUM1401 + ADUM1201 combo per Option B
+  in `docs/wiring-diagram.md` section 3c-bis
+- 100nF decoupling on every VDD/VSUP pin (both domains of the isolator)
+- 10µF bulk on the 24V VSUP of MAX14906 and AD5420
+- 4-pin 0.1" header for the MAX14906 DIO outputs
+- 2-pin screw terminal for the AD5420 4-20mA loop output
+
+### Breadboard layout
+
+```
+ESP32 / 3.3V logic domain           │  24V field domain
+────────────────────────────         │  ──────────────────
+SPI MOSI ──┐                        │
+SPI MISO ──┼── ADUM3154 ────────────┼── SPI MOSI' / MISO' / SCK'
+SPI SCK  ──┘   (isolated SPI)       │      │
+                                    │      ├── MAX14906 (CS=GPIO7)
+GPIO 7  ── CS1 ────────►  ──────────┼──────┤  FAULT=GPIO9
+GPIO 9  ── FAULT1 ◄────  ◄──────────┼──────┘  VSUP=24V rail
+GPIO 10 ── CS2 ────────►  ──────────┼──────┐
+GPIO 11 ── FAULT2 ◄────  ◄──────────┼──────┤  AD5420 (CS=GPIO10)
+                                    │      └  FAULT=GPIO11
+                                    │         VSUP=24V rail
+3.3V ─── ADUM VDD1                  │  24V ── ADUM VDD2 (or via B0505S
+GND  ─── ADUM GND1                  │         isolated 5V → ADUM VDD2
+                                    │         if the isolator needs 5V)
+                                    │  field GND ── ADUM GND2
+                                    │
+                                    │  MAX14906 DO1..DO4 ── 4-pin header
+                                    │  AD5420  IOUT/RET  ── 2-pin screw term
+```
+
+MOSI/MISO/SCK on the **field side** of the isolator are shared between
+MAX14906 and AD5420. CS is unique per chip (GPIO 7 and GPIO 10), and
+each has its own FAULT line back to the ESP32 (GPIO 9 and GPIO 11).
+See `docs/wiring-diagram.md` section 3c-bis for the authoritative pin
+assignments and for Option A vs Option B isolator wiring.
+
+### Wiring checks
+1. Confirm 24V present at **both** VSUP pins (MAX14906 and AD5420)
+   BEFORE you apply 3.3V to the logic side of the ADUM3154. Power
+   sequencing matters less on ADUM parts than on older optocouplers,
+   but it is still good practice and it forces you to verify the field
+   rail is clean before you put logic at risk.
+2. Confirm CS1 (GPIO 7) and CS2 (GPIO 10) both idle high when the
+   ESP32 is running but not mid-transfer.
+3. Verify both FAULT pins (GPIO 9, GPIO 11) idle high — a low FAULT at
+   power-on means the chip is reporting an internal error already
+   (usually under-voltage on VSUP).
+4. Check decoupling: 100nF within 5mm of every VDD / VSUP pin, 10µF
+   bulk on the 24V side.
+
+### Power-on procedure
+1. Bring up the 24V field supply first (Phase 7 is already validated).
+2. Apply USB power to the ESP32 so the logic side of the ADUM3154 comes
+   up with a live 24V field domain already present.
+3. Watch the serial log — `probe.info` should now enumerate `dio` and
+   `iout` in its capabilities.
+
+### Self-test
+```json
+{"cmd":"probe.info"}
+```
+Expected: `"dio":true` and `"iout":true` in the capabilities list.
+
+```json
+{"cmd":"probe.selftest"}
+```
+Expected: ok for both `dio` (MAX14906) and `iout` (AD5420) modules,
+e.g.:
+```json
+{"status":"ok","results":{"dio":"ok","iout":"ok"}}
+```
+
+### Troubleshooting — two most common failure modes
+
+1. **ADUM isolator not passing SPI.** Symptom: `probe.selftest` returns
+   an error for both `dio` and `iout` simultaneously, or `probe.info`
+   shows them as `false`. Cause: wrong supply sequencing (VDD2 not
+   actually live when VDD1 came up), or missing decoupling on VDD2
+   letting the isolator brown-out mid-transfer. Fix: verify 24V → VDD2
+   path is solid, add/replace 100nF directly across VDD2/GND2, then
+   re-sequence field power → USB power.
+
+2. **24V rail dropping because the polyfuse tripped from an inrush
+   spike.** Symptom: field rail reads 0V or sags to a few volts under
+   load, both chips report FAULT. Cause: the 10µF bulk cap on the 24V
+   rail pulled enough inrush at power-on to trip the 1.5A PTC. Fix:
+   **remove 24V for at least 30 seconds** so the polyfuse cools and
+   resets, then re-apply power more gently (current-limit the bench
+   supply, or add a soft-start resistor). If it trips again
+   immediately, something on the 24V rail is genuinely shorted.
+
+---
+
 ## Quick Reference: Which init to uncomment
 
 | Phase | Peripheral | `main.c` line to uncomment | Test command |
@@ -460,6 +698,9 @@ with a pull-up/pull-down scheme.
 | 3 | CAN | `can_init()` | `can.listen` |
 | 4 | 4-20mA | `adc_init()` | `adc.read` |
 | 5 | Isolation | (no code change — hardware only) | Same as Phase 2 |
+| 6 | W5500 Ethernet | `net_init()` | `net.dhcp` |
+| 7 | 24V field PSU | (no code change — power only) | multimeter only |
+| 8 | MAX14906 + AD5420 | `dio_init()` / `iout_init()` | `probe.selftest` |
 
 ## Build-Flash-Test Cycle
 
