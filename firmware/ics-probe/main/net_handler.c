@@ -31,6 +31,72 @@ static bool s_initialized = false;
 static esp_netif_t* s_eth_netif = NULL;
 static esp_eth_handle_t s_eth_handle = NULL;
 
+// ─── Socket table ───────────────────────────────────────────────────────────
+
+#define NET_MAX_SOCKS 4
+static struct { int fd; bool in_use; } s_socks[NET_MAX_SOCKS];
+
+// ─── Hex codec helpers ──────────────────────────────────────────────────────
+
+static int hex_nibble(char c)
+{
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'a' && c <= 'f') return 10 + (c - 'a');
+    if (c >= 'A' && c <= 'F') return 10 + (c - 'A');
+    return -1;
+}
+
+// Decodes `hex` into `out`, returning number of bytes written, or -1 on
+// malformed input. `out_cap` is the max bytes writeable.
+static int hex_decode(const char* hex, uint8_t* out, size_t out_cap)
+{
+    if (!hex) return -1;
+    size_t len = strlen(hex);
+    if (len % 2 != 0) return -1;
+    size_t nbytes = len / 2;
+    if (nbytes > out_cap) return -1;
+    for (size_t i = 0; i < nbytes; i++) {
+        int hi = hex_nibble(hex[2 * i]);
+        int lo = hex_nibble(hex[2 * i + 1]);
+        if (hi < 0 || lo < 0) return -1;
+        out[i] = (uint8_t)((hi << 4) | lo);
+    }
+    return (int)nbytes;
+}
+
+// Encodes `in`/`n` bytes into `out` as lowercase hex. `out` must have
+// capacity of at least 2*n + 1 bytes.
+static void hex_encode(const uint8_t* in, size_t n, char* out)
+{
+    static const char tbl[] = "0123456789abcdef";
+    for (size_t i = 0; i < n; i++) {
+        out[2 * i]     = tbl[(in[i] >> 4) & 0x0f];
+        out[2 * i + 1] = tbl[in[i] & 0x0f];
+    }
+    out[2 * n] = '\0';
+}
+
+// Allocate a slot in the socket table. Returns index ≥ 0 or -1 if full.
+static int sock_alloc(int fd)
+{
+    for (int i = 0; i < NET_MAX_SOCKS; i++) {
+        if (!s_socks[i].in_use) {
+            s_socks[i].fd = fd;
+            s_socks[i].in_use = true;
+            return i;
+        }
+    }
+    return -1;
+}
+
+static cJSON* err_resp(const char* code)
+{
+    cJSON* r = cJSON_CreateObject();
+    cJSON_AddStringToObject(r, "status", "error");
+    cJSON_AddStringToObject(r, "error", code);
+    return r;
+}
+
 void net_init(void)
 {
     ESP_LOGI(TAG, "initializing W5500 Ethernet");
@@ -222,6 +288,135 @@ static cJSON* cmd_static(cJSON* params)
     return resp;
 }
 
+// ─── TCP socket commands ────────────────────────────────────────────────────
+
+static cJSON* cmd_tcp_connect(cJSON* params)
+{
+    if (!s_initialized) return err_resp("not_initialized");
+    cJSON* host_j = cJSON_GetObjectItemCaseSensitive(params, "host");
+    cJSON* port_j = cJSON_GetObjectItemCaseSensitive(params, "port");
+    if (!cJSON_IsString(host_j) || !cJSON_IsNumber(port_j)) {
+        return err_resp("missing_host_or_port");
+    }
+
+    struct addrinfo hints = { 0 };
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+
+    char port_str[8];
+    snprintf(port_str, sizeof(port_str), "%d", port_j->valueint);
+
+    struct addrinfo* res = NULL;
+    if (getaddrinfo(host_j->valuestring, port_str, &hints, &res) != 0 || !res) {
+        return err_resp("dns_failed");
+    }
+
+    int fd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+    if (fd < 0) {
+        freeaddrinfo(res);
+        return err_resp("socket_failed");
+    }
+
+    if (connect(fd, res->ai_addr, res->ai_addrlen) != 0) {
+        close(fd);
+        freeaddrinfo(res);
+        return err_resp("connect_failed");
+    }
+    freeaddrinfo(res);
+
+    int slot = sock_alloc(fd);
+    if (slot < 0) {
+        close(fd);
+        return err_resp("sock_table_full");
+    }
+
+    cJSON* resp = cJSON_CreateObject();
+    cJSON_AddStringToObject(resp, "status", "ok");
+    cJSON_AddNumberToObject(resp, "sock", slot);
+    return resp;
+}
+
+static cJSON* cmd_tcp_send(cJSON* params)
+{
+    if (!s_initialized) return err_resp("not_initialized");
+    cJSON* sock_j = cJSON_GetObjectItemCaseSensitive(params, "sock");
+    cJSON* data_j = cJSON_GetObjectItemCaseSensitive(params, "data");
+    if (!cJSON_IsNumber(sock_j) || !cJSON_IsString(data_j)) {
+        return err_resp("missing_sock_or_data");
+    }
+    int slot = sock_j->valueint;
+    if (slot < 0 || slot >= NET_MAX_SOCKS) return err_resp("invalid_sock");
+    if (!s_socks[slot].in_use) return err_resp("not_open");
+
+    uint8_t buf[512];
+    int n = hex_decode(data_j->valuestring, buf, sizeof(buf));
+    if (n < 0) return err_resp("bad_hex");
+
+    int sent = send(s_socks[slot].fd, buf, n, 0);
+    if (sent < 0) return err_resp("send_failed");
+
+    cJSON* resp = cJSON_CreateObject();
+    cJSON_AddStringToObject(resp, "status", "ok");
+    cJSON_AddNumberToObject(resp, "bytes_sent", sent);
+    return resp;
+}
+
+static cJSON* cmd_tcp_recv(cJSON* params)
+{
+    if (!s_initialized) return err_resp("not_initialized");
+    cJSON* sock_j = cJSON_GetObjectItemCaseSensitive(params, "sock");
+    if (!cJSON_IsNumber(sock_j)) return err_resp("missing_sock");
+    int slot = sock_j->valueint;
+    if (slot < 0 || slot >= NET_MAX_SOCKS) return err_resp("invalid_sock");
+    if (!s_socks[slot].in_use) return err_resp("not_open");
+
+    int timeout_ms = 1000;
+    cJSON* t = cJSON_GetObjectItemCaseSensitive(params, "timeout_ms");
+    if (cJSON_IsNumber(t)) timeout_ms = t->valueint;
+
+    struct timeval tv = {
+        .tv_sec = timeout_ms / 1000,
+        .tv_usec = (timeout_ms % 1000) * 1000,
+    };
+    setsockopt(s_socks[slot].fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+
+    uint8_t buf[512];
+    int n = recv(s_socks[slot].fd, buf, sizeof(buf), 0);
+    if (n < 0) {
+        // EAGAIN/EWOULDBLOCK → timeout; return empty data rather than error
+        cJSON* resp = cJSON_CreateObject();
+        cJSON_AddStringToObject(resp, "status", "ok");
+        cJSON_AddStringToObject(resp, "data", "");
+        cJSON_AddNumberToObject(resp, "bytes", 0);
+        return resp;
+    }
+
+    char hex[1025];
+    hex_encode(buf, (size_t)n, hex);
+    cJSON* resp = cJSON_CreateObject();
+    cJSON_AddStringToObject(resp, "status", "ok");
+    cJSON_AddStringToObject(resp, "data", hex);
+    cJSON_AddNumberToObject(resp, "bytes", n);
+    return resp;
+}
+
+static cJSON* cmd_tcp_close(cJSON* params)
+{
+    cJSON* sock_j = cJSON_GetObjectItemCaseSensitive(params, "sock");
+    if (!cJSON_IsNumber(sock_j)) return err_resp("missing_sock");
+    int slot = sock_j->valueint;
+    if (slot < 0 || slot >= NET_MAX_SOCKS) return err_resp("invalid_sock");
+    if (!s_socks[slot].in_use) return err_resp("not_open");
+
+    close(s_socks[slot].fd);
+    s_socks[slot].fd = -1;
+    s_socks[slot].in_use = false;
+
+    cJSON* resp = cJSON_CreateObject();
+    cJSON_AddStringToObject(resp, "status", "ok");
+    return resp;
+}
+
 cJSON* net_handle_command(const char* action, cJSON* params)
 {
     if (!action) {
@@ -235,6 +430,10 @@ cJSON* net_handle_command(const char* action, cJSON* params)
     }
     if (strcmp(action, "dhcp") == 0)   return cmd_dhcp(params);
     if (strcmp(action, "static") == 0) return cmd_static(params);
+    if (strcmp(action, "tcp_connect") == 0) return cmd_tcp_connect(params);
+    if (strcmp(action, "tcp_send") == 0)    return cmd_tcp_send(params);
+    if (strcmp(action, "tcp_recv") == 0)    return cmd_tcp_recv(params);
+    if (strcmp(action, "tcp_close") == 0)   return cmd_tcp_close(params);
 
     cJSON* r = cJSON_CreateObject();
     cJSON_AddStringToObject(r, "status", "error");
